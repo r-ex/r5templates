@@ -155,16 +155,16 @@ char starpakoptstr[Header.StarpakOptReferenceSize] <bgcolor=cDkBlue, name="Optio
 
 RpakVirtualSegment VirtualSegments[Header.VirtualSegmentCount] <bgcolor=cLtYellow>;
 RpakPageInfo Pages[Header.PageCount] <bgcolor=cLtGreen>;
-RpakDescriptor Descriptors[Header.DescriptorCount] <bgcolor=cLtGray>;
+RpakDescriptor Descriptors[Header.DescriptorCount] <bgcolor=cLtGray, name="Page Pointer Info ">;
 RpakApexAssetEntry AssetEntries[Header.AssetEntryCount] <bgcolor=cBlack, name="Assets ">;
 
-RpakDescriptor GuidDescriptors[Header.GuidDescriptorCount];
+RpakDescriptor GuidDescriptors[Header.GuidDescriptorCount] <name="GUID Reference Info ">;
 RpakFileRelation FileRelations[Header.FileRelationCount] <hidden=true>;
 
 local uint64 pageoffsets[Header.PageCount];
 
 local uint64 i = 0;
-while(i < Header.PageCount)
+for(i = 0; i < Header.PageCount; ++i)
 {
     struct SegmentData
     {
@@ -173,28 +173,23 @@ while(i < Header.PageCount)
 
     pageoffsets[i] = FTell();
     SegmentData data <name="page ">;
-
-    i++;
 }
 
-i = 0;
 // points to every instance of a "page idx, page offset" pointer within page data
-while(i < Header.DescriptorCount)
+for(i = 0; i < Header.DescriptorCount; ++i)
 {
     FSeek(pageoffsets[Descriptors[i].Index] + Descriptors[i].Offset);
 
     RpakDescPointer desc <hidden=true>;
-    i++;
+
 }
 
-i = 0;
 // points to every instance of an asset guid reference
-while(i < Header.GuidDescriptorCount)
+for(i = 0; i < Header.GuidDescriptorCount; ++i)
 {
     FSeek(pageoffsets[GuidDescriptors[i].Index] + GuidDescriptors[i].Offset);
 
     RpakGuidReference guid <hidden=true>;
-    i++;
 }
 
 // asset header read functions
@@ -208,9 +203,9 @@ string ReadModelHeader(ModelHeader& mh)
     return ReadString(pageoffsets[mh.Name.Index] + mh.Name.Offset);
 };
 
-i = 0;
 local uint32 total_uses_count = 0;
-while(i < Header.AssetEntryCount)
+
+for(i = 0; i < Header.AssetEntryCount; ++i)
 {
     total_uses_count += AssetEntries[i].UsesCount;
 
@@ -244,5 +239,4 @@ while(i < Header.AssetEntryCount)
         else
             FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
     }
-    i++;
 }
