@@ -68,7 +68,7 @@ struct RpakVirtualSegment
 
 struct RpakPageInfo
 {
-	uint32 VirtualSegmentIndex;	// Corrosponds to a data block entry
+	uint32 VirtualSegmentIndex;
 	uint32 Flags;					// Unknown right now
 	uint32 DataSize;				// Total size of the block
 };
