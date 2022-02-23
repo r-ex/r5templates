@@ -1,0 +1,94 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include "MiscStructs.bt"
+typedef unsigned char uint8_t;
+typedef uint16 uint16_t;
+typedef uint32 uint32_t;
+typedef uint64 uint64_t;
+
+struct VGHeader
+{
+	uint32_t Magic;		// 0x47567430	'0tvg'
+	uint32_t Version;	// 0x1
+	uint32_t Unknown;	// Usually 0
+	uint32_t DataSize;	// Total size of data + header in starpak
+
+	uint64_t BoneRemapOffset;
+	uint64_t BoneRemapCount;		// Only 1 byte each
+
+	uint64_t SubmeshOffset;
+	uint64_t SubmeshCount;		// 0x48 each
+
+	uint64_t IndexOffset;
+	uint64_t IndexCount;		// 0x2 each (uint16_t)
+
+	uint64_t VertexOffset;
+	uint64_t VertexCount;		// 0x1 each aka, in bytes
+
+	uint64_t ExtendedWeightsOffset;
+	uint64_t ExtendedWeightsCount;		// Only 1 byte per count
+
+	uint64_t Unknown2Offset;
+	uint64_t Unknown2Count;		// 0x30 each
+
+	uint64_t LodOffset;
+	uint64_t LodCount;			// 0x8 each
+
+	uint64_t ExternalWeightsOffset;
+	uint64_t ExternalWeightsCount;	// 0x10 each
+
+	uint64_t StripsOffset;
+	uint64_t StripsCount;			// 0x23 each
+};
+
+struct VGSubmesh
+{
+	uint32_t Flags1;					// Flags that pertain to this submesh
+	uint32_t Flags2;					// Also flags that pertain to this submesh
+	uint32_t VertexOffsetBytes;			// Offset into vertex buffer by bytes
+	uint32_t VertexBufferStride;		// Stride in bytes of the vertex buffer
+	uint32_t VertexCount;				// Count of vertices used
+	uint32_t Int6;
+	uint32_t ExtendedWeightsOffset;		// Offset into the extended weights buffer
+	uint32_t Int8;
+	uint32_t IndexOffset;				// Some form of index offset
+	uint32_t IndexCount;				// Some form of index count
+	uint32_t VertexOffset2;				// Some form of vertex offset (Not always used??)
+	uint32_t VertexCount2;				// some form of vertex count
+	uint32_t StripIndex;				// Index into the strips structs
+	uint32_t Int14;
+	uint32_t Int15;
+	uint32_t Int16;
+	uint32_t Int17;
+	uint32_t Int18;
+};
+
+VGHeader vhdr;
+
+// asserts
+if( vhdr.Magic != 0x47567430 || vhdr.Version != 1 )
+    Assert(0, "invalid magic/version");
+if( FileSize() != vhdr.DataSize )
+    Assert(0, "invalid data size");
+
+FSeek(vhdr.BoneRemapOffset);
+char BoneRemaps[vhdr.BoneRemapCount];
+
+FSeek(vhdr.SubmeshOffset);
+VGSubmesh Submeshes[vhdr.SubmeshCount];
+
+FSeek(vhdr.IndexOffset);
+uint16 Indices[vhdr.IndexCount];
+
+FSeek(vhdr.VertexOffset);
+char Vertices[vhdr.VertexCount];
