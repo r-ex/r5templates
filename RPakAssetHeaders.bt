@@ -1,0 +1,149 @@
+// structs for asset "head" sections
+// note: most of these are specifically for the season 3 version of the game
+
+
+//
+// MATERIALS 
+//
+struct UnknownMaterialSection
+{
+	// nulling these bytes makes the material stop drawing entirely
+	uint32_t Unknown5[8];
+
+	uint32_t Unknown6;
+
+	// both of these are required
+
+	// seems to be some kind of render/visibility flags.
+	uint16_t Flags1;
+	uint16_t Flags2;
+
+	uint64_t Padding;
+};
+
+struct MaterialHeader
+{
+  uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
+	uint64_t Unknown; // all null bytes
+	uint64_t AssetGUID; // for some reason this is the material's guid
+
+	RPakPtr Name; // asset path
+	RPakPtr SurfaceName; // surface name (as defined in surfaceproperties.rson)
+	uint64_t Padding;
+
+
+	uint64_t GUIDRefs[4]; // default asset guids
+	uint64_t ColpassGUID; // may be blank if this is the colpass asset
+	uint64_t ShaderSetGUID;
+
+	RPakPtr TextureGUIDs; // texture guids
+
+	// points to a whole lotta nothing (null bytes)
+	// this would be a single RPakPtr but compiler says no
+	// thanks msvc!
+    RPakPtr Unknown;
+
+	uint8_t Unknown3[0x10]; // "optional"
+
+	uint32_t Unknown4; // REQUIRED
+
+	uint32_t Alignment;
+
+	// neither of these 2 seem to be required
+	uint32_t something;
+	uint32_t something2;
+
+	UnknownMaterialSection UnkSections[2];
+};
+
+//
+// SHADERS
+//
+struct ShaderSetHeader {
+	uint8_t Unknown1[0x18];
+	uint16_t Count1;
+	uint16_t Count2;
+	uint16_t Count3;
+	uint8_t Byte1;
+	uint8_t Byte2;
+
+	uint8_t Unknown2[0x10];
+
+	uint64_t ShaderHash1;
+	uint64_t ShaderHash2;
+
+	uint64_t VertexShaderHash;
+	uint64_t PixelShaderHash;
+};
+
+
+//
+// TEXTURES 
+//
+struct TextureHeader
+{
+	uint64_t NameHash;
+	uint32_t NameIndex;
+	uint32_t NameOffset;
+
+	uint16_t Width;
+	uint16_t Height;
+
+	uint8_t Un1;
+	uint8_t Un2;
+	uint16_t Format;		// Maps to a DXGI format
+
+	uint32_t DataSize;	// This is the total amount of image data across all banks
+	uint8_t Unknown2;
+	uint8_t OptMipLevelsStreamed;
+	uint8_t LayersCount;
+	uint8_t Unknown3;
+	uint8_t Unknown4;
+	uint8_t MipLevels;
+	uint8_t MipLevelsStreamed;
+
+	uint8_t UnknownPad[0x15];
+};
+
+
+//
+// MODELS 
+//
+struct ModelHeader
+{
+	// IDST data
+	RPakPtr SkeletonPtr <comment=".rmdl">;
+	uint64_t Padding;
+
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr Name;
+	uint64_t Padding2;
+
+
+	// charms do not use this, but goblin_dropship and weapons do
+	RPakPtr PhyPtr <comment=".phy">;
+	uint64_t Padding3;
+
+	// this data is usually kept in a mandatory starpak, but there's also fallback(?) data here
+	RPakPtr VGPtr <comment=".vtx and .vvd combined, often streamed from starpak as well">;
+
+	// pointer to data for the model's arig guid(s?)
+	RPakPtr AnimRigRefPtr <comment="pointer to the guids of the anim rigs associated with this model">;
+
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t AnimRigCount;
+
+	// size of the data kept in starpak
+	uint32_t StreamedDataSize;
+	uint32_t StreamDataCacheSize <comment="i think this is supposed to be the size of the data at VGPtr, but that isn't always true">;
+	uint64_t Padding6;
+
+	// number of anim sequences directly associated with this model
+	uint32_t AnimSequenceCount;
+	RPakPtr AnimSequencePtr;
+
+	uint64_t Padding7;
+	uint64_t Padding8;
+	uint64_t Padding9;
+};

@@ -1,0 +1,248 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: RPak
+//   Authors: rexx
+//   Version: 8
+//   Purpose: Respawn Pak files
+//  Category: Archive
+// File Mask: *.rpak
+//  ID Bytes: 52 50 61 6b 08
+//   History: 
+//------------------------------------------------
+typedef unsigned char uint8_t;
+typedef uint16 uint16_t;
+typedef uint32 uint32_t;
+typedef uint64 uint64_t;
+
+struct RpakApexHeader
+{
+	char Magic[4] <fgcolor=cLtGreen>;
+	uint16 Version <fgcolor=cLtBlue>;
+	char Flags <fgcolor=cPurple>;
+	char IsCompressed <fgcolor=cGreen>;
+
+	FILETIME TimeCreated;
+    uint64 yes;
+
+	uint64 CompressedSize;
+	uint64 EmbeddedStarpakOffset;
+	uint64 Padding;
+	uint64 DecompressedSize;
+	uint64 EmbeddedStarpakSize;
+	uint64 Padding2;
+
+	uint16 StarpakReferenceSize;
+	uint16 StarpakOptReferenceSize;
+	uint16 VirtualSegmentCount;			// * 0x10
+	uint16 PageCount;		// * 0xC
+
+	uint32 PatchIndex;
+
+	uint32 DescriptorCount;
+	uint32 AssetEntryCount;
+	uint32 GuidDescriptorCount;
+	uint32 FileRelationCount;
+
+	char Unk[0x1c];
+};
+
+struct RpakPatchHeader
+{
+	uint32 PatchDataSize;				// Total size of the patch edit stream data (Following all data blocks)
+	uint32 PatchSegmentIndex;			// Index into RpakVirtualSegmentBlock[], this entire virtual block is read FIRST, before first asset
+};
+
+struct RpakPatchCompressPair
+{
+	uint64 CompressedSize;
+	uint64 DecompressedSize;
+};
+
+struct RpakVirtualSegment
+{
+	uint32 DataFlag;
+	uint32 DataType;
+	uint64 DataSize;
+};
+
+struct RpakPageInfo
+{
+	uint32 VirtualSegmentIndex;	// Corrosponds to a data block entry
+	uint32 Flags;					// Unknown right now
+	uint32 DataSize;				// Total size of the block
+};
+
+struct RpakDescriptor
+{
+	uint32 Index;
+	uint32 Offset;
+};
+
+struct RpakFileRelation
+{
+	uint32 ID;
+};
+
+struct RpakSegmentBlock
+{
+	uint64 Offset;
+	uint64 Size;
+};
+
+struct RpakApexAssetEntry
+{
+	uint64 NameHash <format=hex, fgcolor=cLtGreen>;
+	uint64 Padding;
+
+	uint32 SubHeaderPageIndex;
+	uint32 SubHeaderPageOffset;
+	uint32 RawDataPageIndex;
+	uint32 RawDataPageOffset;
+
+	uint64 StarpakOffset <format=hex>;				
+	uint64 OptimalStarpakOffset <format=hex>;		
+
+	uint16 HighestPageNum;
+	uint16 Un2;
+
+	uint32 RelationsStartIndex;		
+
+	uint32 UsesStartIndex; // page index for the list of the assets that this asset uses
+	uint32 RelationsCount;  // number of relations
+	uint32 UsesCount;      // number of assets that are used/referenced by guid
+
+	uint32 SubHeaderSize;
+	uint32 Version;
+	char Magic[4] <fgcolor=cWhite>;
+};
+
+struct RPakPtr
+{
+    uint32_t Index;
+    uint32_t Offset;
+};
+
+struct RpakDescPointer
+{
+    uint32 Index  <fgcolor=cRed>;
+    uint32 Offset <fgcolor=cLtBlue>;
+};
+
+struct RpakGuidReference
+{
+    uint64 Guid <format=hex, fgcolor=cYellow>;
+};
+
+// include this after all of the type are defined so that we don't have to redefine anything
+#include "RPakAssetHeaders.bt"
+
+
+RpakApexHeader Header <fgcolor=0x5268F7>;
+
+if(Header.PatchIndex)
+{
+    
+    RpakPatchHeader TempPatchHeader <fgcolor=cLtBlue>;
+    RpakPatchCompressPair PatchCompressPairs[Header.PatchIndex] <fgcolor=cLtGreen>;
+    uint16 PatchIndicesToFile[Header.PatchIndex] <bgcolor=cDkYellow>;
+
+    Printf("WARNING: Patch rpaks are not currently supported\n");
+}
+
+char starpakstr[Header.StarpakReferenceSize] <bgcolor=cDkGreen, name="Mandatory Starpak Paths">;
+char starpakoptstr[Header.StarpakOptReferenceSize] <bgcolor=cDkBlue, name="Optional Starpak Paths">;
+
+RpakVirtualSegment VirtualSegments[Header.VirtualSegmentCount] <bgcolor=cLtYellow>;
+RpakPageInfo Pages[Header.PageCount] <bgcolor=cLtGreen>;
+RpakDescriptor Descriptors[Header.DescriptorCount] <bgcolor=cLtGray>;
+RpakApexAssetEntry AssetEntries[Header.AssetEntryCount] <bgcolor=cBlack, name="Assets ">;
+
+RpakDescriptor GuidDescriptors[Header.GuidDescriptorCount];
+RpakFileRelation FileRelations[Header.FileRelationCount] <hidden=true>;
+
+local uint64 pageoffsets[Header.PageCount];
+
+local uint64 i = 0;
+while(i < Header.PageCount)
+{
+    struct SegmentData
+    {
+        char data[Pages[i].DataSize];
+    };
+
+    pageoffsets[i] = FTell();
+    SegmentData data <name="page ">;
+
+    i++;
+}
+
+i = 0;
+// points to every instance of a "page idx, page offset" pointer within page data
+while(i < Header.DescriptorCount)
+{
+    FSeek(pageoffsets[Descriptors[i].Index] + Descriptors[i].Offset);
+
+    RpakDescPointer desc <hidden=true>;
+    i++;
+}
+
+i = 0;
+// points to every instance of an asset guid reference
+while(i < Header.GuidDescriptorCount)
+{
+    FSeek(pageoffsets[GuidDescriptors[i].Index] + GuidDescriptors[i].Offset);
+
+    RpakGuidReference guid <hidden=true>;
+    i++;
+}
+
+// asset header read functions
+string ReadMaterialHeader(MaterialHeader& mh)
+{
+    return ReadString(pageoffsets[mh.Name.Index] + mh.Name.Offset);
+};
+
+string ReadModelHeader(ModelHeader& mh)
+{
+    return ReadString(pageoffsets[mh.Name.Index] + mh.Name.Offset);
+};
+
+i = 0;
+local uint32 total_uses_count = 0;
+while(i < Header.AssetEntryCount)
+{
+    total_uses_count += AssetEntries[i].UsesCount;
+
+    if( AssetEntries[i].Magic == "txtr" )
+    {
+        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        //TextureHeader th;
+    }
+    if( AssetEntries[i].Magic == "matl" )
+    {
+        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        MaterialHeader mh <read=ReadMaterialHeader>;
+    }
+
+    if( AssetEntries[i].Magic == "shds" )
+    {
+        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        //ShaderSetHeader ssh;
+    }
+
+    if( AssetEntries[i].Magic == "mdl_" )
+    {
+        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        ModelHeader mdlhdr <read=ReadModelHeader>;
+    }
+
+    if( AssetEntries[i].Magic == "shdr" )
+    {
+        if(AssetEntries[i].RawDataPageIndex == -1)
+            Printf("Asset %i (%s) has no raw data", i, "shdr");
+        else
+            FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+    }
+    i++;
+}
