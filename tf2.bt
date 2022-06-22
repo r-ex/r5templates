@@ -1,0 +1,57 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+typedef unsigned char uint8_t;
+typedef uint16 uint16_t;
+typedef uint32 uint32_t;
+typedef uint64 uint64_t;
+
+struct RPakHeaderR2_t
+{
+	uint32_t m_nMagic;                    // 'RPak'
+	uint16_t   m_nVersion;                  // R2 = '7' R5 = '8'
+	uint8_t  m_nFlags[0x2];               //
+	uint8_t  m_nHash0[0x8];               //
+	uint8_t  m_nHash1[0x8];               //
+
+	uint64_t m_nSizeDisk;                 // Compressed size
+	uint8_t  unk0[0x8];                   //
+	uint64_t m_nSizeMemory;               // Decompressed size
+	uint8_t  unk1[0x8];                   //
+
+	uint16_t m_nStarpakReferenceSize;     //
+	uint16_t m_nVirtualSegmentCount;      //
+	uint16_t m_nPageCount;		           //
+
+	uint16_t m_nPatchIndex;               //
+
+	uint32_t m_nDescriptorCount;          //
+	uint32_t m_nAssetEntryCount;          // File entry count
+	uint32_t m_nGuidDescriptorCount;      //
+
+	uint8_t  unk2[0x4];                   //
+	uint8_t  unk3[0x4];                   //
+	uint8_t  unk4[0x4];                   //
+};
+
+struct RPakPatchHeader_t
+{
+	uint64_t m_nSizeDisk;
+	uint64_t m_nSizeMemory;
+};
+
+RPakHeaderR2_t rhreader;
+
+if(rhreader.m_nPatchIndex)
+{
+    RPakPatchHeader_t PatchCompressPairs[rhreader.m_nPatchIndex] <fgcolor=cLtGreen>;
+}
