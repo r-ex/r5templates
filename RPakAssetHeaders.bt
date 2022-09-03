@@ -21,11 +21,44 @@ struct UnknownMaterialSection
 	uint64_t Padding;
 };
 
+struct UnknownMaterialSectionTF
+{
+	// nulling these bytes makes the material stop drawing entirely
+	uint8_t Unknown5[56];
+};
+
+
+struct MaterialHeaderTF
+{
+	uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
+	uint64_t Padding; // all null bytes
+	uint64_t AssetGUID <format=hex>; // for some reason this is the material's guid
+
+	RPakPtr Name; // asset path
+	RPakPtr SurfaceName; // surface name (as defined in surfaceproperties.rson)
+	uint64_t Padding;
+
+
+	uint64_t GUIDRefs[4]; // default asset guids
+	UnknownMaterialSectionTF UnkSection;
+	uint64_t ColpassGUID <format=hex>; // may be blank if this is the colpass asset
+	uint64_t ShaderSetGUID <format=hex>;
+
+	RPakPtr TextureGUIDs; // texture guids
+
+	RPakPtr TextureGUIDs2;
+
+    uint8_t Unknown[0x20];
+    uint16_t Width;
+    uint16_t Height;
+
+};
+
 struct MaterialHeader
 {
-  uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
-	uint64_t Unknown; // all null bytes
-	uint64_t AssetGUID; // for some reason this is the material's guid
+	uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
+	uint64_t Padding; // all null bytes
+	uint64_t AssetGUID <format=hex>; // for some reason this is the material's guid
 
 	RPakPtr Name; // asset path
 	RPakPtr SurfaceName; // surface name (as defined in surfaceproperties.rson)
@@ -38,14 +71,17 @@ struct MaterialHeader
 
 	RPakPtr TextureGUIDs; // texture guids
 
-	// points to a whole lotta nothing (null bytes)
-	// this would be a single RPakPtr but compiler says no
-	// thanks msvc!
-    RPakPtr Unknown;
+	RPakPtr TextureGUIDs2;
 
-	uint8_t Unknown3[0x10]; // "optional"
+	uint16_t UnkSignature;
+	uint16_t Width;
+	uint16_t Height;
+	uint16_t Unknown;
 
-	uint32_t Unknown4; // REQUIRED
+	uint32_t Flags;
+	uint32_t Unknown1;
+
+	uint32_t Unknown2; // REQUIRED
 
 	uint32_t Alignment;
 
@@ -105,6 +141,84 @@ struct TextureHeader
 	uint8_t UnknownPad[0x15];
 };
 
+struct TextureHeaderV9
+{
+	RPakPtr debugName<fgcolor=cLtRed>;
+	uint16_t format;
+	uint16_t width <fgcolor=cPurple>;
+	uint16_t height <fgcolor=cYellow>;
+	uint16_t un1;
+	uint16_t arraySize;
+	uint32_t dataSize_deprecated;
+	uint8_t permanentMipCount;
+	uint8_t streamedMipCount;
+	uint8_t optStreamedMipCount;
+	uint8_t un2;
+	uint8_t un3;
+	uint8_t un4;
+	uint8_t un5;
+	uint8_t UnknownPad[27];
+};
+
+//
+// UI IMAGE ATLAS
+//
+struct UIMGHeader
+{
+	uint64_t Unk0;
+	uint16_t Width;
+	uint16_t Height;
+	uint16_t TextureOffsetsCount;
+	uint16_t TextureCount;
+	uint32_t TextureOffsetsIndex;
+	uint32_t TextureOffsetsOffset;
+	uint32_t TextureDimsIndex;
+	uint32_t TextureDimsOffset;
+	uint32_t Unk20;
+	uint32_t Unk24;
+	uint32_t TextureHashesIndex;
+	uint32_t TextureHashesOffset;
+	uint32_t TextureNamesIndex;
+	uint32_t TextureNamesOffset;
+	uint64_t TextureGuid;
+};
+
+struct UIImageOffset
+{
+	// these don't seem to matter all that much as long as they are a valid float number
+	float f0;
+	float f1;
+	
+	// endX and endY define where the edge of the image is, with 1.f being the full length of the image and 0.5f being half of the image
+	float endX;
+	float endY;
+
+	// startX and startY define where the top left corner is in proportion to the full image dimensions
+	float startX;
+	float startY;
+
+	// changing these 2 values causes the image to be distorted on each axis
+	float unkX;
+	float unkY;
+};
+
+struct UIImageUV
+{
+	// maybe the uv coords for top left?
+	// just leave these as 0 and it should be fine
+	float uv0x;
+	float uv0y;
+
+	// these two seem to be the uv coords for the bottom right corner
+	// examples:
+	// uv1x = 10;
+	// | | | | | | | | | |
+	// uv1x = 5;
+	// | | | | |
+	float uv1x;
+	float uv1y;
+};
+
 
 //
 // MODELS 
@@ -135,8 +249,8 @@ struct ModelHeader
 	uint32_t AnimRigCount;
 
 	// size of the data kept in starpak
-	uint32_t StreamedDataSize;
-	uint32_t StreamDataCacheSize <comment="i think this is supposed to be the size of the data at VGPtr, but that isn't always true">;
+	uint32_t permanentDataSize;
+	uint32_t streamingDataSize;
 	uint64_t Padding6;
 
 	// number of anim sequences directly associated with this model
@@ -146,4 +260,160 @@ struct ModelHeader
 	uint64_t Padding7;
 	uint64_t Padding8;
 	uint64_t Padding9;
+};
+
+struct UIFontData
+{
+	RPakPtr Ptr1;
+	uint64_t Unk1[5];
+	RPakPtr Ptr2;
+	RPakPtr Ptr3;
+	RPakPtr Ptr4;
+	RPakPtr Ptr5;
+	RPakPtr Ptr6;
+};
+
+// size: 40 (0x28)
+struct UIFontHeader
+{
+	uint16_t FontCount;
+	uint16_t Unk2;
+	uint16_t Width;
+	uint16_t Height;
+	uint32_t Unk3;
+	uint32_t Unk4;
+	RPakPtr FontData;
+	RPakPtr Ptr2;
+	uint64_t AtlasGUID;
+};
+
+struct RSONHeader
+{
+	int type<format=hex>;
+	int nodeCount;
+	RPakPtr pNodes;
+};
+
+struct RSONNode
+{
+    RPakPtr pName;
+    int type;
+    int valueCount;
+    RPakPtr pValues;
+};
+
+
+// no
+
+struct RUIHeader
+{
+	RPakPtr Name;
+	RPakPtr Unk1;
+	RPakPtr Unk2;
+    float UnkFloat1;
+    float UnkFloat2;
+    float UnkFloat3;
+    float UnkFloat4;
+    uint64 UnkQWORD;
+	RPakPtr m_pArgClusters;
+	RPakPtr m_pArgs;
+	uint32_t Unk3;
+    uint32_t Unk4;
+	uint16_t Unk5;
+    uint16_t Unk6;
+    uint16_t Unk7;
+    uint16_t m_nArgClusterCount;
+};
+
+struct TextureListHeader_t
+{
+	RPakPtr textureGuids;
+	RPakPtr textureNames;
+	uint64_t textureCount;
+};
+
+struct ShaderHeader
+{
+  RPakPtr m_pszName;
+  char m_byte1;
+  char m_byte2;
+  char m_byte3;
+  char m_byte4;
+  char m_byte5;
+  char m_byte6;
+  char m_byte7;
+  char m_byte8;
+  RPakPtr m_pUnk1;
+  RPakPtr m_pUnk2;
+};
+
+
+struct ParticleScriptHeader
+{
+    uint64_t m_pTextures[4];
+    char unk[0x20];
+    RPakPtr m_pszName;
+    RPakPtr m_pUnk2;
+    uint64_t m_pSysEffectComputeShader; // seems to only be used on particle_script/system.rpak
+    uint64_t m_pProcessComputeShader;
+    uint64_t m_pRenderVertexShader;
+    uint64_t m_pRenderGeometryShader;
+    uint64_t m_pRenderPixelShader;
+    uint32_t unk2;
+    uint32_t unk3;
+    uint64_t unk4;
+};
+
+struct SettingsLayoutHeader
+{
+    RPakPtr m_pszName;
+    RPakPtr m_pUnk1;
+    RPakPtr m_pUnk2;
+    uint32_t dwUnk1;
+    uint32_t dwUnk2;
+    uint32_t dwUnk3;
+    uint32_t dwUnk4;
+    uint32_t dwUnk5;
+    uint32_t dwUnk6;
+    uint32_t dwUnk7;
+    uint32_t dwUnk8;
+    RPakPtr m_pUnk3;
+    RPakPtr m_pUnk4;
+}; // size = 72
+
+struct SettingsAssetHeader
+{
+  QWORD layoutGuid<format=hex>;
+  RPakPtr pValues;
+  RPakPtr pName;
+  RPakPtr pStringBuffer;
+
+  uint32_t guid; // actually 31 bit :D
+  uint32_t unk1;
+
+  RPakPtr pModNames; // e.g. passives for settings/mp/player/pilot_survival.rpak
+
+  RPakPtr unk2;
+  uint32_t valueBufSize;
+  char unk[12];
+}; // size = 72
+
+struct AnimHeader
+{
+	RPakPtr data;
+
+	RPakPtr name;
+
+	uint8_t Unknown[0x18];
+
+	uint32_t ModelHashIndex;
+	uint32_t ModelHashOffset;
+};
+
+struct SubtitleHeader
+{
+    uint32 stringCount;
+    uint32 unk2;
+    RPakPtr unk3;
+    RPakPtr pEntries;
 };
