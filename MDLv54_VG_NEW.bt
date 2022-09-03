@@ -1,0 +1,155 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include "MiscStructs.bt"
+typedef unsigned char uint8_t;
+typedef uint16 uint16_t;
+typedef uint32 uint32_t;
+typedef uint64 uint64_t;
+
+typedef enum <uint64> {
+    VG_POSITION = 0x1,
+    VG_PACKED_POSITION = 0x2,
+    VG_VERTEX_COLOR = 0x10,
+
+    VG_PACKED_WEIGHTS = 0x5000,
+    VG_UV_LAYER = 0x200000000, // what
+    
+} VGFLAGS;
+
+struct VGHeader
+{
+	char id[4] <fgcolor=cLtGreen>;		// 0x47567430	'0tVG'
+	uint32 version;	// 0x1
+	uint32 padding;
+	uint32 lodCount;	// If 0x1, this IS the first and only lod, if > 0x1, MORE 0tVG headers follow PER lod count
+    uint32 unk;
+    uint32 unk1;
+    uint32 lodOffset;
+    char unk3[8];
+};
+
+struct RMdlVGIndexCountPacked
+{
+	uint64 Count : 56;
+	uint64 Type : 8;
+};
+
+struct VGSubmesh
+{
+	uint64 submeshFlags <fgcolor=cLtGreen, format=hex>;
+	uint32 vertexSize;		// size in bytes per vertex
+	uint32 vertexCount;		// number of vertices
+
+	uint64 indexOffset;
+	RMdlVGIndexCountPacked indexPacked;	// 0x2 each (uint16_t)
+
+	uint64 vertexOffset;
+	uint64 vertexBufferSize;        // TOTAL size of vertex buffer
+
+	uint64 extendedWeightsOffset;
+	uint64 extendedWeightsCount;	// Only 1 byte per count
+
+	uint64 externalWeightsOffset;
+	uint64 externalWeightsCount;	// 0x10 each
+
+	uint64 stripsOffset;
+	uint64 stripsCount;			    // 0x23 each
+};
+
+struct VGLod
+{
+    char unk[4];
+    uint32 dataSize;
+    short submeshCount;
+    byte unk1; // both of these bytes line up with the LOD index
+    byte unk2;
+    float distance;
+    uint64 submeshOffset;
+};
+
+struct VGStrip
+{
+	uint32 IndexCount;
+	uint32 IndexOffset;
+
+	uint32 VertexCount;
+	uint32 VertexOffset;
+
+	uint16 NumBones;
+
+	char StripFlags;
+
+	char Padding[0x10];
+};
+
+VGHeader vhdr;
+
+// asserts
+if( vhdr.id != "0tVG" || vhdr.version != 1 )
+    Assert(0, "invalid magic/version");
+
+local uint64 i = 0;
+local uint64 j = 0;
+
+for(i = 0; i < vhdr.lodCount; ++i)
+{
+    // 0x14040999F in R5pc_r5-71_J79_CL692369_2020_11_13_11_49
+    // (0x18 + (0x18 * i) + vhdr.lodOffset)
+    FSeek(startof(vhdr.lodOffset) + (sizeof(VGLod) * i) + vhdr.lodOffset);
+    VGLod lod <bgcolor=cPurple,read=Str("======== LOD %i ========", this.unk1)>;
+
+
+    for(j = 0; j < lod.submeshCount; ++j)
+    {
+        FSeek(startof(lod.submeshOffset) + lod.submeshOffset + (j*sizeof(VGSubmesh)));
+        VGSubmesh submesh <read=Str("- %i vertices, %i indices, %i weights, %i strips", this.vertexCount, this.indexPacked.Count, this.extendedWeightsCount, this.stripsCount)>;
+    
+        if(submesh.submeshFlags == 0 || submesh.vertexCount == 0)
+            continue;
+    
+        // Indices
+    
+        FSeek(startof(submesh.indexOffset) + submesh.indexOffset);
+    
+        struct
+        {
+            short data[submesh.indexPacked.Count];
+        } indexData<read=Str("%i indices", sizeof(this.data) / 2), bgcolor=cLtBlue>;
+    
+        // Vertices
+    
+        FSeek(startof(submesh.vertexOffset) + submesh.vertexOffset);
+    
+        struct
+        {
+            char data[submesh.vertexSize * submesh.vertexCount];
+        } vertexData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkBlue>;
+
+        // External Weights
+        if(submesh.externalWeightsCount)
+        {
+            FSeek(startof(submesh.externalWeightsOffset) + submesh.externalWeightsOffset);
+        
+            
+            struct
+            {
+                char data[submesh.externalWeightsCount * 0x10];
+            } externalWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkBlue>;
+        }
+
+        FSeek(startof(submesh.stripsOffset) + submesh.stripsOffset);
+        VGStrip strip<bgcolor=cYellow>;
+
+    }
+
+};

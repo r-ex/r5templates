@@ -16,79 +16,175 @@ typedef uint16 uint16_t;
 typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 
+typedef enum <uint64> {
+    VG_POSITION = 0x1,
+    VG_PACKED_POSITION = 0x2,
+    VG_VERTEX_COLOR = 0x10,
+
+    VG_PACKED_WEIGHTS = 0x5000,
+    VG_UV_LAYER = 0x200000000, // what
+    
+} VGFLAGS;
+
 struct VGHeader
 {
-	uint32_t Magic;		// 0x47567430	'0tvg'
-	uint32_t Version;	// 0x1
-	uint32_t Unknown;	// Usually 0
-	uint32_t DataSize;	// Total size of data + header in starpak
+	char id[4] <fgcolor=cLtGreen>;		// 0x47567430	'0tvg'
+	uint32 version;	    // 0x1
+	uint32 unk;	        // Usually 0
+	uint32 dataSize;	// Total size of data + header in starpak
 
-	uint64_t BoneRemapOffset;
-	uint64_t BoneRemapCount;		// Only 1 byte each
+	uint64 boneRemapOffset; // offset to bone remap buffer
+	uint64 boneRemapCount;  // number of "bone remaps" (size: 1)
 
-	uint64_t SubmeshOffset;
-	uint64_t SubmeshCount;		// 0x48 each
+	uint64 submeshOffset;   // offset to submesh buffer
+	uint64 submeshCount;    // number of submeshes (size: 0x48)
 
-	uint64_t IndexOffset;
-	uint64_t IndexCount;		// 0x2 each (uint16_t)
+	uint64 indexOffset;     // offset to index buffer
+	uint64 indexCount;      // number of indices (size: 2 (uint16_t))
 
-	uint64_t VertexOffset;
-	uint64_t VertexCount;		// 0x1 each aka, in bytes
+	uint64 vertexOffset;    // offset to vertex buffer
+	uint64 vertexCount;     // number of bytes in vertex buffer
 
-	uint64_t ExtendedWeightsOffset;
-	uint64_t ExtendedWeightsCount;		// Only 1 byte per count
+	uint64 extendedWeightsOffset;   // offset to extended weights buffer
+	uint64 extendedWeightsCount;    // number of bytes in extended weights buffer
 
-	uint64_t Unknown2Offset;
-	uint64_t Unknown2Count;		// 0x30 each
+    
+    // there is one for every LOD submesh
+    // i.e, unknownCount == lod.submeshCount for all LODs
+	uint64 unknownOffset;   // offset to buffer
+	uint64 unknownCount;    // count (size: 0x30)
 
-	uint64_t LodOffset;
-	uint64_t LodCount;			// 0x8 each
+	uint64 lodOffset;       // offset to LOD buffer
+	uint64 lodCount;        // number of LODs (size: 0x8)
 
-	uint64_t ExternalWeightsOffset;
-	uint64_t ExternalWeightsCount;	// 0x10 each
+	uint64 externalWeightsOffset;   // offset to external weights buffer
+	uint64 externalWeightsCount;     // number of external weights (size: 0x10)
 
-	uint64_t StripsOffset;
-	uint64_t StripsCount;			// 0x23 each
+	uint64 stripsOffset;    // offset to strips buffer
+	uint64 stripsCount;     // number of strips (size: 0x23)
+
+    char unused[0x40];
 };
 
 struct VGSubmesh
 {
-	uint32_t Flags1;					// Flags that pertain to this submesh
-	uint32_t Flags2;					// Also flags that pertain to this submesh
-	uint32_t VertexOffsetBytes;			// Offset into vertex buffer by bytes
-	uint32_t VertexBufferStride;		// Stride in bytes of the vertex buffer
-	uint32_t VertexCount;				// Count of vertices used
-	uint32_t Int6;
-	uint32_t ExtendedWeightsOffset;		// Offset into the extended weights buffer
-	uint32_t Int8;
-	uint32_t IndexOffset;				// Some form of index offset
-	uint32_t IndexCount;				// Some form of index count
-	uint32_t VertexOffset2;				// Some form of vertex offset (Not always used??)
-	uint32_t VertexCount2;				// some form of vertex count
-	uint32_t StripIndex;				// Index into the strips structs
-	uint32_t Int14;
-	uint32_t Int15;
-	uint32_t Int16;
-	uint32_t Int17;
-	uint32_t Int18;
+	uint64 flags <fgcolor=cLtGreen, format=hex>;	// submesh flags
+	uint32 vertexOffset;			// start offset for this submesh's vertices
+	uint32 vertexSize;		        // number of bytes used from the vertex buffer
+	uint32 vertexCount;				// number of vertices
+	uint32 unk1;
+	uint32 extendedWeightsOffset;	// start offset for this submesh's "extended weights"
+	uint32 extendedWeightsSize;     // size or count of extended weights
+	uint32 indexOffset;				// start offset for this submesh's "indices"
+	uint32 indexCount;				// number of indices
+	uint32 externalWeightsOffset;	// seems to be an offset into the "external weights" buffer for this submesh
+	uint32 externalWeightsCount;    // seems to be the number of "external weights" that this submesh uses
+	uint32 stripsOffset;			// Index into the strips structs
+	uint32 stripsCount;
+	uint32 Int15;
+	uint32 Int16;
+	uint32 Int17;
+	uint32 Int18;
+};
+
+struct VGStrip
+{
+	uint32 indexCount;
+	uint32 indexOffset;
+
+	uint32 vertexCount;
+	uint32 vertexOffset;
+
+	uint16 numBones;
+
+	char stripFlags;
+
+	char unk[0x10];
+};
+
+struct VGLod
+{
+	uint16 submeshIndex;
+	uint16 submeshCount;
+	float distance;
 };
 
 VGHeader vhdr;
 
 // asserts
-if( vhdr.Magic != 0x47567430 || vhdr.Version != 1 )
+if( vhdr.id != "0tVG" || vhdr.version != 1 )
     Assert(0, "invalid magic/version");
-if( FileSize() != vhdr.DataSize )
-    Assert(0, "invalid data size");
+//if( FileSize() != vhdr.dataSize )
+//    Assert(0, "invalid data size");
 
-FSeek(vhdr.BoneRemapOffset);
-char BoneRemaps[vhdr.BoneRemapCount];
+local uint64 i = 0;
 
-FSeek(vhdr.SubmeshOffset);
-VGSubmesh Submeshes[vhdr.SubmeshCount];
+FSeek(vhdr.boneRemapOffset);
+char BoneRemaps[vhdr.boneRemapCount];
 
-FSeek(vhdr.IndexOffset);
-uint16 Indices[vhdr.IndexCount];
+FSeek(vhdr.lodOffset);
+VGLod lod[vhdr.lodCount]<bgcolor=cLtGray>;
 
-FSeek(vhdr.VertexOffset);
-char Vertices[vhdr.VertexCount];
+struct unkdata
+{
+    int64 unk;
+    float unk1;
+    char data[0x24];
+};
+
+FSeek(vhdr.unknownOffset);
+unkdata unk_data[vhdr.unknownCount]<bgcolor=cYellow>;
+
+for(i = 0; i < vhdr.submeshCount; ++i)
+{
+    FSeek(vhdr.submeshOffset + (i * sizeof(VGSubmesh)));
+
+    VGSubmesh submesh <bgcolor=cLtRed>;
+
+    if(submesh.flags == 0 || submesh.vertexCount == 0)
+        continue;
+
+    if(submesh.unk1 != 0)
+    {
+        Printf("unk1: %i\n", submesh.unk1);
+    }
+
+    // Indices
+
+    FSeek(vhdr.indexOffset + submesh.indexOffset);
+
+    struct
+    {
+        short data[submesh.indexCount];
+    } indexData<read=Str("%i indices", sizeof(this.data) / 2), bgcolor=cLtBlue>;
+
+    // Vertices
+
+    FSeek(vhdr.vertexOffset + submesh.vertexOffset);
+
+    struct
+    {
+        char data[submesh.vertexSize * submesh.vertexCount];
+    } vertexData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkBlue>;
+
+
+    if(submesh.extendedWeightsSize != 0)
+    {
+        FSeek(vhdr.extendedWeightsOffset + submesh.extendedWeightsOffset);
+    
+        struct
+        {
+            char data[submesh.extendedWeightsSize];
+        } extendedWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
+    }
+    
+
+    // Strips
+
+    FSeek(vhdr.stripsOffset + (submesh.stripsOffset * sizeof(VGStrip)));
+
+    struct
+    {
+        VGStrip data[submesh.stripsCount];
+    } stripData<read=Str("%i strips", sizeof(this.data) / sizeof(VGStrip)), bgcolor=cLtBlue>;
+}
