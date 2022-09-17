@@ -21,6 +21,8 @@ local const uint32 FILE_VERSION = ReadInt(4);
 
 PakHdr_t pakhdr <fgcolor=0x5268F7>;
 
+Assert(pakhdr.dcmpSize == FileSize(), "Invalid dcmpSize. Is your pak compressed?");
+
 local uint64 patchSizeToSkip = 0;
 local uint64 pageStart = 0;
 

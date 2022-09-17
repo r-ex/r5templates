@@ -3,21 +3,23 @@
 
 struct PakHdr_t
 {
-	char Magic[4] <fgcolor=cLtGreen>;
-	uint16 Version <fgcolor=cLtBlue>;
-	char Flags <fgcolor=cPurple>;
+	char id[4] <fgcolor=cLtGreen>;
+	uint16 version <fgcolor=cLtBlue>;
+
+    // these are technically the same var but meh
+	char flags <fgcolor=cPurple>;
 	char IsCompressed <fgcolor=cGreen>;
 
 	FILETIME TimeCreated <name="File Creation Time">;
     uint64 yes <format=hex>;
 
-	uint64 CompressedSize;
+	uint64 cmpSize;
 
     if(FILE_VERSION == 8)
 	    uint64 EmbeddedStarpakOffset;
 
 	uint64 Padding;
-	uint64 DecompressedSize;
+	uint64 dcmpSize;
 
     if(FILE_VERSION == 8)
 	    uint64 EmbeddedStarpakSize;
