@@ -609,6 +609,9 @@ struct RUIHeader
     uint16_t Unk6;
     uint16_t Unk7;
     uint16_t argClusterCount;
+    RPakPtr Unk8;
+    RPakPtr Unk9;
+    RPakPtr Unk10;
 };
 
 struct RuiArgCluster
