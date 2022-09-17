@@ -226,10 +226,14 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         RUIImage ruiimage <read=ReadString(pageoffsets[this.NameIndex] + this.NameOffset)>;
     }
 
-    if( AssetEntries[i].Magic == "matl" && FILE_VERSION == 8 )
+    if( AssetEntries[i].Magic == "matl" )
     {
         FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        MaterialHeader mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
+
+        if(FILE_VERSION == 8)
+            MaterialHeader mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
+        else
+            MaterialHeaderTF mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
         //Printf("%s\n", );
         //Printf("unk: %i, uses: %i\n", AssetEntries[i].Un2, AssetEntries[i].UsesCount);
         //FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);

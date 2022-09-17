@@ -243,7 +243,6 @@ struct UnknownMaterialSectionTF
 	uint8_t Unknown5[56];
 };
 
-
 struct MaterialHeaderTF
 {
 	uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
@@ -267,6 +266,8 @@ struct MaterialHeaderTF
     uint8_t Unknown[0x20];
     uint16_t Width;
     uint16_t Height;
+
+    uint32 unk;
 
 };
 
