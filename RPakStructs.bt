@@ -92,7 +92,7 @@ struct RpakSegmentBlock
 	uint64 Size;
 };
 
-struct RpakApexAssetEntry
+struct RpakAssetEntry
 {
 	uint64 NameHash <format=hex, fgcolor=cLtGreen>;
 	uint64 Padding;
