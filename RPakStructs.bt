@@ -96,6 +96,7 @@ struct RpakSegmentBlock
 
 struct RpakAssetEntry
 {
+    local string name;
 	uint64 NameHash <format=hex, fgcolor=cLtGreen>;
 	uint64 Padding;
 
@@ -133,11 +134,6 @@ struct RpakDescPointer
 {
     uint32 Index  <fgcolor=cRed>;
     uint32 Offset <fgcolor=cLtBlue>;
-};
-
-struct RpakGuidReference
-{
-    uint64 guid <format=hex, fgcolor=cYellow>;
 };
 
 enum SegmentFlags
@@ -735,4 +731,17 @@ struct AnimRecordingHeader
 {
     RPakPtr keys[15] <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
     Vector2 values[15];
+};
+typedef uint64 RPakGuid<format=hex>;
+typedef RPakGuid RPakGuidRef<fgcolor=cYellow>;
+struct MaterialForAspect
+{
+    RPakGuid rgdu;
+    RPakGuid rgdp;
+    RPakGuid sknu;
+    RPakGuid sknp;
+    RPakGuid sknc;
+    RPakGuid wldu;
+    RPakGuid ptcu;
+    RPakGuid ptcs;
 };
