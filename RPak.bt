@@ -15,139 +15,20 @@ typedef uint16 uint16_t;
 typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 
-struct RpakApexHeader
-{
-	char Magic[4] <fgcolor=cLtGreen>;
-	uint16 Version <fgcolor=cLtBlue>;
-	char Flags <fgcolor=cPurple>;
-	char IsCompressed <fgcolor=cGreen>;
+local const uint32 FILE_VERSION = ReadInt(4);
 
-	FILETIME TimeCreated <name="File Creation Time">;
-    uint64 yes <format=hex>;
+#include "RPakStructs.bt"
 
-	uint64 CompressedSize;
-	uint64 EmbeddedStarpakOffset;
-	uint64 Padding;
-	uint64 DecompressedSize;
-	uint64 EmbeddedStarpakSize;
-	uint64 Padding2;
-
-	uint16 StarpakReferenceSize;
-	uint16 StarpakOptReferenceSize;
-	uint16 VirtualSegmentCount;			// * 0x10
-	uint16 PageCount;		// * 0xC
-
-	uint32 PatchIndex;
-
-	uint32 DescriptorCount;
-	uint32 AssetEntryCount;
-	uint32 GuidDescriptorCount;
-	uint32 FileRelationCount;
-
-	char Unk[0x1c];
-};
-
-struct RpakPatchHeader
-{
-	uint32 PatchDataSize;				// Total size of the patch edit stream data (Following all data blocks)
-	uint32 PatchSegmentIndex;			// Index into RpakVirtualSegmentBlock[], this entire virtual block is read FIRST, before first asset
-};
-
-struct RpakPatchCompressPair
-{
-	uint64 CompressedSize;
-	uint64 DecompressedSize;
-};
-
-struct RpakVirtualSegment
-{
-	uint32 DataFlag;
-	uint32 DataType;
-	uint64 DataSize;
-};
-
-struct RpakPageInfo
-{
-	uint32 VirtualSegmentIndex;
-	uint32 Flags;					// Unknown right now
-	uint32 DataSize;				// Total size of the block
-};
-
-struct RpakDescriptor
-{
-	uint32 Index;
-	uint32 Offset;
-};
-
-struct RpakFileRelation
-{
-	uint32 ID;
-};
-
-struct RpakSegmentBlock
-{
-	uint64 Offset;
-	uint64 Size;
-};
-
-struct RpakApexAssetEntry
-{
-	uint64 NameHash <name="guid", format=hex, fgcolor=cLtGreen>;
-	uint64 Padding <name="padding">;
-
-	uint32 SubHeaderPageIndex <name="head MemPageIdx">;
-	uint32 SubHeaderPageOffset <name="head MemPageOffset">;
-	uint32 RawDataPageIndex <name="cpu MemPageIdx">;
-	uint32 RawDataPageOffset <name="cpu MemPageOffset">;
-
-	uint64 StarpakOffset <format=hex>;				
-	uint64 OptionalStarpakOffset <format=hex>;		
-
-	uint16 HighestPageNum; // pageEnd
-	uint16 Un2;
-
-	uint32 RelationsStartIndex;		
-
-	uint32 UsesStartIndex; // page index for the list of the assets that this asset uses
-	uint32 RelationsCount;  // number of relations
-	uint32 UsesCount;      // number of assets that are used/referenced by guid
-
-	uint32 SubHeaderSize;
-	uint32 Version;
-	char Magic[4] <fgcolor=cWhite>;
-};
-
-struct RPakPtr
-{
-    uint32_t Index;
-    uint32_t Offset;
-};
-
-struct RpakDescPointer
-{
-    uint32 Index  <fgcolor=cRed>;
-    uint32 Offset <fgcolor=cLtBlue>;
-};
-
-struct RpakGuidReference
-{
-    uint64 Guid <format=hex, fgcolor=cYellow>;
-};
-
-// include this after all of the type are defined so that we don't have to redefine anything
-#include "RPakAssetHeaders.bt"
-
-RpakApexHeader Header <fgcolor=0x5268F7>;
+PakHdr_t pakhdr <fgcolor=0x5268F7>;
 
 local uint64 patchSizeToSkip = 0;
 local uint64 pageStart = 0;
 
-if(Header.PatchIndex)
+if(pakhdr.PatchIndex)
 {
-    
     RpakPatchHeader TempPatchHeader <fgcolor=cLtBlue>;
-    RpakPatchCompressPair PatchCompressPairs[Header.PatchIndex] <fgcolor=cLtGreen>;
-    uint16 PatchIndicesToFile[Header.PatchIndex] <bgcolor=cDkYellow>;
+    RpakPatchCompressPair PatchCompressPairs[pakhdr.PatchIndex] <fgcolor=cLtGreen>;
+    uint16 PatchIndicesToFile[pakhdr.PatchIndex] <bgcolor=cDkYellow>;
 
     patchSizeToSkip = TempPatchHeader.PatchDataSize;
     pageStart = TempPatchHeader.PatchSegmentIndex;
@@ -155,19 +36,24 @@ if(Header.PatchIndex)
     Printf("WARNING: Patch rpaks are not currently supported\n");
 }
 
-char starpakstr[Header.StarpakReferenceSize] <bgcolor=cDkGreen, name="Mandatory Starpak Paths">;
-char starpakoptstr[Header.StarpakOptReferenceSize] <bgcolor=cDkBlue, name="Optional Starpak Paths">;
+if(exists(pakhdr.lenStarpakPaths) && pakhdr.lenStarpakPaths > 0)
+    char starpakstr[pakhdr.lenStarpakPaths] <bgcolor=cDkGreen>;
 
-RpakVirtualSegment VirtualSegments[Header.VirtualSegmentCount] <bgcolor=cLtYellow>;
-RpakPageInfo Pages[Header.PageCount] <bgcolor=cLtGreen>;
-RpakDescriptor Descriptors[Header.DescriptorCount] <bgcolor=cLtGray, name="Pointers">;
-RpakApexAssetEntry AssetEntries[Header.AssetEntryCount] <bgcolor=cBlack, name="Assets ">;
+if(exists(pakhdr.lenOptStarpakPaths) && pakhdr.lenOptStarpakPaths > 0)
+    char starpakoptstr[pakhdr.StarpakOptReferenceSize] <bgcolor=cDkBlue>;
 
-RpakDescriptor GuidDescriptors[Header.GuidDescriptorCount];
-RpakFileRelation FileRelations[Header.FileRelationCount] <hidden=true>;
+RpakVirtualSegment VirtualSegments[pakhdr.VirtualSegmentCount] <bgcolor=cLtYellow>;
+RpakPageInfo Pages[pakhdr.PageCount] <bgcolor=cLtGreen, read=Str("sz %08x | vseg (f: 0x%02x align: 0x%02x) | 0x%02x", this.dataSize, VirtualSegments[this.segIdx].flags, VirtualSegments[this.segIdx].align, this.align), comment=ReadSegmentFlags(VirtualSegments[this.segIdx].flags)>;
+RpakDescriptor Descriptors[pakhdr.DescriptorCount] <bgcolor=cLtGray, read=Str("{page: %i ofs: %i}", this.Index, this.Offset)>;
+RpakApexAssetEntry AssetEntries[pakhdr.AssetEntryCount] <bgcolor=cBlack, read=Str("%s - %LX", this.Magic, this.NameHash), comment=Str("v%i sz: %i | head: {%i, %i}, cpu: {%i, %i}, unk2: %i", this.Version, this.SubHeaderSize, this.SubHeaderPageIndex, this.SubHeaderPageOffset, this.RawDataPageIndex, this.RawDataPageOffset, this.Un2)>;
 
-local uint64 pageoffsets[Header.PageCount];
+RpakDescriptor GuidDescriptors[pakhdr.GuidDescriptorCount];
+uint32 FileRelations[pakhdr.FileRelationCount] <hidden=true>;
 
+if(exists(pakhdr.UnkCount3) && pakhdr.UnkCount3 > 0)
+    char unk_nonpaged[pakhdr.UnkCount3];
+
+local uint64 pageoffsets[pakhdr.PageCount];
 
 // GoToPageOffset
 void GTPO(uint64 Index, uint64 Offset)
@@ -180,28 +66,23 @@ void GTPTR(RPakPtr& ptr)
     FSeek(pageoffsets[ptr.Index] + ptr.Offset);
 }
 
-
 char PatchData[patchSizeToSkip];
 
 local uint64 i = 0;
-for(i = pageStart; i < Header.PageCount; ++i)
+for(i = pageStart; i < pakhdr.PageCount; ++i)
 {
-    struct SegmentData
-    {
-        char data[Pages[i].DataSize];
-    };
-
     pageoffsets[i] = FTell();
 
-    #ifdef HIDE_PAGES
-    SegmentData data <name="page ", hidden=true>;
-    #else
-    SegmentData data <name="page ">;
-    #endif
+    struct
+    {
+        local int idx = i;
+        char data[Pages[i].dataSize];
+    } data <read=ReadSegmentFlags(VirtualSegments[Pages[this.idx].segIdx].flags)>;
+
 }
 
 // points to every instance of a "page idx, page offset" pointer within page data
-for(i = 0; i < Header.DescriptorCount; ++i)
+for(i = 0; i < pakhdr.DescriptorCount; ++i)
 {
     FSeek(pageoffsets[Descriptors[i].Index] + Descriptors[i].Offset);
 
@@ -209,60 +90,29 @@ for(i = 0; i < Header.DescriptorCount; ++i)
 }
 
 // points to every instance of an asset guid reference
-for(i = 0; i < Header.GuidDescriptorCount; ++i)
+for(i = 0; i < pakhdr.GuidDescriptorCount; ++i)
 {
     FSeek(pageoffsets[GuidDescriptors[i].Index] + GuidDescriptors[i].Offset);
 
     RpakGuidReference guid <hidden=true>;
 }
 
-
-// asset header read functions
-string ReadMaterialHeader(MaterialHeader& mh)
+string ReadTextureName(TextureHeader& th)
 {
-    return ReadString(pageoffsets[mh.Name.Index] + mh.Name.Offset);
+    if(th.NameIndex > 0 || th.NameOffset > 0)
+        return ReadString(pageoffsets[th.NameIndex] + th.NameOffset);
+    else
+        return Str("0x%LX", th.NameHash);
 };
-
-string ReadModelHeader(ModelHeader& mh)
-{
-    return ReadString(pageoffsets[mh.Name.Index] + mh.Name.Offset);
-};
-
-string ReadRUIHeader(RUIHeader& rh)
-{
-    return ReadString(pageoffsets[rh.Name.Index] + rh.Name.Offset);
-};
-
-string ReadParticleScriptHeader(ParticleScriptHeader& ph)
-{
-    return "particle_script/" + ReadString(pageoffsets[ph.m_pszName.Index] + ph.m_pszName.Offset) + ".rpak";
-};
-
-string ReadSettingsLayoutHeader(SettingsLayoutHeader& slh)
-{
-    return ReadString(pageoffsets[slh.m_pszName.Index] + slh.m_pszName.Offset);
-};
-
-string ReadSettingsHeader(SettingsAssetHeader& sh)
-{
-    return ReadString(pageoffsets[sh.pName.Index] + sh.pName.Offset);
-};
-
-string ReadAnimHeader(AnimHeader& ah)
-{
-    return ReadString(pageoffsets[ah.name.Index] + ah.name.Offset);
-};
-
-local uint32 total_uses_count = 0;
 
 local uint32 j = 0;
-for(i = 0; i < Header.AssetEntryCount; ++i)
+for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 {
     if( AssetEntries[i].Magic == "efct" )
     {
         FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
         
-        //char efct;
+        char efct;
     }
 
     if( AssetEntries[i].Magic == "txtr" )
@@ -275,7 +125,7 @@ for(i = 0; i < Header.AssetEntryCount; ++i)
         }
         else
         {
-            //TextureHeader th  <bgcolor=cLtRed>;
+            TextureHeader th <bgcolor=cLtRed, read=ReadTextureName>;
         }
     }
 
@@ -338,7 +188,7 @@ for(i = 0; i < Header.AssetEntryCount; ++i)
         }
     }
 
-    if( AssetEntries[i].Magic == "uimg" && AssetEntries[i].NameHash == 0x73feec3a9aa16827)
+    if( AssetEntries[i].Magic == "uimg" && false)
     {
         struct UIHashEntry
         {
@@ -360,59 +210,66 @@ for(i = 0; i < Header.AssetEntryCount; ++i)
             UIHashEntry h[uh.TextureOffsetsCount];
         } hashes;
 
-
         //UIHashEntry hashes[uh.TextureOffsetsCount];
 
         GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
 
         UIImageUV uvs[uh.TextureOffsetsCount];
     }
-    if( AssetEntries[i].Magic == "matl" )
+
+    if( AssetEntries[i].Magic == "uiia")
+    {
+        GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
+        UIIAHeader uh<hidden=false>;
+
+        GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
+        RUIImage ruiimage <read=ReadString(pageoffsets[this.NameIndex] + this.NameOffset)>;
+    }
+
+    if( AssetEntries[i].Magic == "matl" && FILE_VERSION == 8 )
     {
         FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        MaterialHeader mh <read=ReadMaterialHeader, hidden=false>;
-        //Printf("%s\n", ReadString(pageoffsets[mh.Name.Index] + mh.Name.Offset));
+        MaterialHeader mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
+        //Printf("%s\n", );
         //Printf("unk: %i, uses: %i\n", AssetEntries[i].Un2, AssetEntries[i].UsesCount);
-        FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
-        char rdp;
+        //FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+        //char rdp;
     }
 
     if( AssetEntries[i].Magic == "shds" )
     {
-        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
         //ShaderSetHeader ssh;
     }
 
     if( AssetEntries[i].Magic == "shdr" )
     {
-        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
         //ShaderHeader shdr;
     }
 
     if( AssetEntries[i].Magic == "mdl_" )
     {
         FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        ModelHeader mdlhdr <read=ReadModelHeader>;
-
-        GTPTR(mdlhdr.SkeletonPtr);
-        char t;
-    }
-
-   if( AssetEntries[i].Magic == "aseq" )
-    {
-        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        AnimHeader anhdr <read=ReadAnimHeader>;
-        GTPTR(anhdr.data);
-        char data;
+        ModelHeader mdlhdr <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset)>;
     }
 
     if( AssetEntries[i].Magic == "ui\0\0" )
     {
         FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        //RUIHeader g <read=ReadRUIHeader, hidden=false>;
+        RUIHeader g <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), comment=Str("ac: %i, args: %i", this.argClusterCount, this.argCount), hidden=false>;
 
-        //GTPO(g.Unk2.Index, g.Unk2.Offset);
-        //char y;
+        GTPTR(g.pArgClusters);
+        RuiArgCluster t;
+
+        GTPTR(g.pArgs);
+
+        if(g.argCount > 0)
+        {
+            struct {
+                RuiArg arg[g.argCount]<read=Str("%X", this.short_hash & 0xFFFF)>;
+            } args;
+        }
     }
 
     if( AssetEntries[i].Magic == "txls" )
@@ -423,16 +280,14 @@ for(i = 0; i < Header.AssetEntryCount; ++i)
 
     if( AssetEntries[i].Magic == "shdr" )
     {
-        if(AssetEntries[i].RawDataPageIndex == -1)
-            Printf("Asset %i (%s) has no raw data\n", i, "shdr");
-        else
-            FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+        // if(AssetEntries[i].RawDataPageIndex != -1)
+        //     FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
     }
 
     if( AssetEntries[i].Magic == "rpsk" )
     {
         //GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
-        //ParticleScriptHeader rpsk<read=ReadParticleScriptHeader>;
+        //ParticleScriptHeader rpsk<read=Str("particle_script/%s.rpak", ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset))>;
         //GTPO(rpsk.m_pUnk2.Index, rpsk.m_pUnk2.Offset);
         //char rpsk2;
     }
@@ -440,7 +295,7 @@ for(i = 0; i < Header.AssetEntryCount; ++i)
     if( AssetEntries[i].Magic == "stlt" )
     {
         GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
-        SettingsLayoutHeader stlt<read=ReadSettingsLayoutHeader>;
+        SettingsLayoutHeader stlt<read=ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset)>;
 
         GTPTR(stlt.m_pUnk3);
         char stlt1;
@@ -458,6 +313,25 @@ for(i = 0; i < Header.AssetEntryCount; ++i)
     if( AssetEntries[i].Magic == "stgs" )
     {
         GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
-        SettingsAssetHeader stgs<read=ReadSettingsHeader>;
+        SettingsAssetHeader stgs<read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+    }
+
+
+    if( AssetEntries[i].Magic == "anir" && false )
+    {
+        GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
+        AnimRecordingHeader anir;
+
+        GTPTR(anir.keys[0]);
+        char fr;
+    }
+
+    
+    if( AssetEntries[i].Magic == "aseq" )
+    {
+        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        //AnimHeader anhdr <read=ReadAnimHeader>;
+        //GTPTR(anhdr.data);
+        //char data;
     }
 }

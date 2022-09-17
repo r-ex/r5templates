@@ -1,6 +1,222 @@
 // structs for asset "head" sections
 // note: most of these are specifically for the season 3 version of the game
 
+struct PakHdr_t
+{
+	char Magic[4] <fgcolor=cLtGreen>;
+	uint16 Version <fgcolor=cLtBlue>;
+	char Flags <fgcolor=cPurple>;
+	char IsCompressed <fgcolor=cGreen>;
+
+	FILETIME TimeCreated <name="File Creation Time">;
+    uint64 yes <format=hex>;
+
+	uint64 CompressedSize;
+
+    if(FILE_VERSION == 8)
+	    uint64 EmbeddedStarpakOffset;
+
+	uint64 Padding;
+	uint64 DecompressedSize;
+
+    if(FILE_VERSION == 8)
+	    uint64 EmbeddedStarpakSize;
+	uint64 Padding2;
+
+	uint16 lenStarpakPaths;
+
+    if(FILE_VERSION == 8)
+	    uint16 lenOptStarpakPaths;
+
+	uint16 VirtualSegmentCount;			// * 0x10
+	uint16 PageCount;		// * 0xC
+
+
+    uint16 PatchIndex;
+
+    if(FILE_VERSION == 8)
+        uint16 align;
+    
+
+	uint32 DescriptorCount;
+	uint32 AssetEntryCount;
+	uint32 GuidDescriptorCount;
+	uint32 FileRelationCount;
+
+    uint32 UnkCount;
+    uint32 UnkCount2;
+
+    if(FILE_VERSION == 8)
+    {
+	    char Unk[0x8];
+        uint32 UnkCount3;
+        char Unk1[0x8];
+    }
+};
+
+struct RpakPatchHeader
+{
+	uint32 dataSize;				// Total size of the patch edit stream data (Following all data blocks)
+	uint32 patchPageIdx;			// Index into RpakVirtualSegmentBlock[], this entire virtual block is read FIRST, before first asset
+};
+
+struct RpakPatchCompressPair
+{
+	uint64 cmpSize;
+	uint64 dcmpSize;
+};
+
+struct RpakVirtualSegment
+{
+	uint32 flags;
+	uint32 align;
+	uint64 size;
+};
+
+struct RpakPageInfo
+{
+	uint32 segIdx;
+	uint32 align;					// Unknown right now
+	uint32 dataSize;				// Total size of the block
+};
+
+struct RpakDescriptor
+{
+	uint32 Index;
+	uint32 Offset;
+};
+
+struct RpakSegmentBlock
+{
+	uint64 Offset;
+	uint64 Size;
+};
+
+struct RpakApexAssetEntry
+{
+	uint64 NameHash <format=hex, fgcolor=cLtGreen>;
+	uint64 Padding;
+
+	uint32 SubHeaderPageIndex;
+	uint32 SubHeaderPageOffset;
+	uint32 RawDataPageIndex;
+	uint32 RawDataPageOffset;
+
+	uint64 StarpakOffset <format=hex>;	
+
+    if(FILE_VERSION == 8)			
+	    uint64 OptionalStarpakOffset <format=hex>;		
+
+	uint16 HighestPageNum; // pageEnd
+	uint16 Un2;
+
+	uint32 RelationsStartIndex;		
+
+	uint32 UsesStartIndex; // page index for the list of the assets that this asset uses
+	uint32 RelationsCount;  // number of relations
+	uint32 UsesCount;      // number of assets that are used/referenced by guid
+
+	uint32 SubHeaderSize;
+	uint32 Version;
+	char Magic[4] <fgcolor=cWhite>;
+};
+
+struct RPakPtr
+{
+    uint32_t Index;
+    uint32_t Offset;
+};
+
+struct RpakDescPointer
+{
+    uint32 Index  <fgcolor=cRed>;
+    uint32 Offset <fgcolor=cLtBlue>;
+};
+
+struct RpakGuidReference
+{
+    uint64 guid <format=hex, fgcolor=cYellow>;
+};
+
+enum SegmentFlags
+{
+    CPU = (1 << 0), // 0x1
+    
+    SERVER_ONLY = (1 << 5), // 0x20
+    CLIENT_ONLY = (1 << 6), // 0x40
+    DEV_ONLY = (1 << 7), // 0x80
+};
+
+string ReadSegmentFlags(uint flags)
+{
+    string value = "";
+
+    if(flags == 0)
+        return "HEAD";
+
+    int i = 0;
+    int flag = 0;
+
+    int flagsFound = 0;
+
+    for(i = 0; i < 32; i++)
+    {
+        flag = flags & (1 << i);
+
+        if(flag != 0)
+        {
+            flagsFound++;
+        }
+    }
+
+    if((flags & 1) != 1)
+        value += "HEAD | ";
+
+    int flagCounter = 0;
+    for(i = 0; i < 32; i++)
+    {
+        flag = flags & (1 << i);
+
+        switch(flag)
+        {
+        case 0:
+            break;
+        case 0x1:
+            value += "CPU";
+            break;
+        //case 0x2:
+            //value += "UNK_2";
+            //break;
+        case 0x20:
+            value += "SERVER";
+            break;
+        case 0x40:
+            value += "CLIENT";
+            break;
+        case 0x80:
+            value += "DEV";
+            break;
+        default:
+            value += Str("UNK_%x", flag);
+            break;
+        }
+
+        if(flag != 0)
+        {
+            flagCounter++;
+            if(flagCounter < flagsFound)
+            {
+                value += " | ";
+            }
+        }
+    }
+
+    return value;
+}
+
+////////////
+// Assets //
+////////////
 
 //
 // MATERIALS 
@@ -118,7 +334,7 @@ struct ShaderSetHeader {
 //
 struct TextureHeader
 {
-	uint64_t NameHash;
+	uint64_t NameHash <format=hex>;
 	uint32_t NameIndex;
 	uint32_t NameOffset;
 
@@ -127,7 +343,7 @@ struct TextureHeader
 
 	uint8_t Un1;
 	uint8_t Un2;
-	uint16_t Format;		// Maps to a DXGI format
+	uint16_t Format;	// Maps to a DXGI format
 
 	uint32_t DataSize;	// This is the total amount of image data across all banks
 	uint8_t Unknown2;
@@ -158,6 +374,56 @@ struct TextureHeaderV9
 	uint8_t un4;
 	uint8_t un5;
 	uint8_t UnknownPad[27];
+};
+
+struct UIIAFlags
+{
+	uint8_t HasLowTable : 1;
+	uint8_t LowTableBc7 : 1;
+	uint8_t HasHighTable : 1;
+	uint8_t HighTableBc7 : 1;
+	// 0x1 = RpakDecompress
+	// 0x2 = RpakDecompressSnowflake
+	uint8_t CompressionType : 2;
+	uint8_t SizeShift : 2;
+};
+
+struct UIIAHeader
+{
+	uint64_t Zero;
+	uint64_t NegativeOne;
+
+	uint16_t AtlasCount;
+
+	UIIAFlags Flags;
+	uint8_t Padding;
+	uint16_t Unknown;
+	uint16_t NegativeOne2;
+
+	uint16_t Width;
+	uint16_t Height;
+
+	uint32_t Padding2;
+
+	float FloatTable[0x8];
+};
+
+struct RUIImage
+{
+	uint32_t Zero[0x8];
+
+	uint16_t HighResolutionWidth;
+	uint16_t HighResolutionHeight;
+
+	uint16_t LowResolutionWidth;
+	uint16_t LowResolutionHeight;
+
+	uint32_t BufferIndex;
+	uint32_t BufferOffset;
+
+	uint32_t NameIndex;
+    uint32_t NameOffset;
+    uint32_t Unk[2];
 };
 
 //
@@ -234,13 +500,11 @@ struct ModelHeader
 	RPakPtr Name;
 	uint64_t Padding2;
 
-
 	// charms do not use this, but goblin_dropship and weapons do
 	RPakPtr PhyPtr <comment=".phy">;
 	uint64_t Padding3;
 
-	// this data is usually kept in a mandatory starpak, but there's also fallback(?) data here
-	RPakPtr VGPtr <comment=".vtx and .vvd combined, often streamed from starpak as well">;
+	RPakPtr StaticPropStreamPreloadData <comment=".vtx and .vvd combined. preload data for static props only">;
 
 	// pointer to data for the model's arig guid(s?)
 	RPakPtr AnimRigRefPtr <comment="pointer to the guids of the anim rigs associated with this model">;
@@ -305,25 +569,64 @@ struct RSONNode
 
 // no
 
+enum <char> RuiArgumentType_t
+{
+  TYPE_STRING = 0x1,
+  TYPE_ASSET = 0x2,
+  TYPE_BOOL = 0x3,
+  TYPE_INT = 0x4,
+  TYPE_FLOAT = 0x5,
+  TYPE_FLOAT2 = 0x6,
+  TYPE_FLOAT3 = 0x7,
+  TYPE_COLOR_ALPHA = 0x8,
+  TYPE_GAMETIME = 0x9,
+  TYPE_WALLTIME = 0xA,
+  TYPE_UIHANDLE = 0xB,
+  TYPE_IMAGE = 0xC,
+  TYPE_FONT_FACE = 0xD,
+  TYPE_FONT_HASH = 0xE,
+  TYPE_ARRAY = 0xF,
+};
+
+
 struct RUIHeader
 {
 	RPakPtr Name;
 	RPakPtr Unk1;
 	RPakPtr Unk2;
-    float UnkFloat1;
-    float UnkFloat2;
-    float UnkFloat3;
-    float UnkFloat4;
+    float elementWidth;
+    float elementHeight;
+    float UnkFloat3 <comment=Str("1/%f", parentof(this).elementWidth)>;
+    float UnkFloat4 <comment=Str("1/%f", parentof(this).elementHeight)>;
     uint64 UnkQWORD;
-	RPakPtr m_pArgClusters;
-	RPakPtr m_pArgs;
-	uint32_t Unk3;
+	RPakPtr pArgClusters;
+	RPakPtr pArgs;
+	short argCount;
+    short unk3;
     uint32_t Unk4;
 	uint16_t Unk5;
     uint16_t Unk6;
     uint16_t Unk7;
-    uint16_t m_nArgClusterCount;
+    uint16_t argClusterCount;
 };
+
+struct RuiArgCluster
+{
+  uint16_t argIndex;
+  uint16_t argCount;
+  char byte1; // hash_mul
+  char byte2; // hash_add
+};
+
+struct RuiArg
+{
+    RuiArgumentType_t type;
+    char unk1;
+    short unk2;
+    short unk3;
+    short short_hash;
+};
+
 
 struct TextureListHeader_t
 {
@@ -416,4 +719,17 @@ struct SubtitleHeader
     uint32 unk2;
     RPakPtr unk3;
     RPakPtr pEntries;
+};
+
+struct Vector2
+{
+    float x,y;
+};
+
+
+// 816 bytes...
+struct AnimRecordingHeader
+{
+    RPakPtr keys[15] <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+    Vector2 values[15];
 };
