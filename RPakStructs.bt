@@ -96,7 +96,6 @@ struct RpakSegmentBlock
 
 struct RpakAssetEntry
 {
-    local string name;
 	uint64 NameHash <format=hex, fgcolor=cLtGreen>;
 	uint64 Padding;
 
