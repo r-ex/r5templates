@@ -1,6 +1,9 @@
 // structs for asset "head" sections
 // note: most of these are specifically for the season 3 version of the game
 
+typedef uint64 RPakGuid<format=hex>;
+typedef RPakGuid RPakGuidRef<fgcolor=cYellow>;
+
 struct PakHdr_t
 {
 	char id[4] <fgcolor=cLtGreen>;
@@ -444,7 +447,7 @@ struct UIMGHeader
 	uint32_t TextureHashesOffset;
 	uint32_t TextureNamesIndex;
 	uint32_t TextureNamesOffset;
-	uint64_t TextureGuid;
+	RPakGuid TextureGuid;
 };
 
 struct UIImageOffset
@@ -596,7 +599,7 @@ struct RUIHeader
     float elementHeight;
     float UnkFloat3 <comment=Str("1/%f", parentof(this).elementWidth)>;
     float UnkFloat4 <comment=Str("1/%f", parentof(this).elementHeight)>;
-    uint64 UnkQWORD;
+    RPakPtr pArgNames;
 	RPakPtr pArgClusters;
 	RPakPtr pArgs;
 	short argCount;
@@ -731,8 +734,7 @@ struct AnimRecordingHeader
     RPakPtr keys[15] <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
     Vector2 values[15];
 };
-typedef uint64 RPakGuid<format=hex>;
-typedef RPakGuid RPakGuidRef<fgcolor=cYellow>;
+
 struct MaterialForAspect
 {
     RPakGuid rgdu;

@@ -15,7 +15,7 @@ typedef uint16 uint16_t;
 typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 
-local const uint32 FILE_VERSION = ReadInt(4);
+local const uint32 FILE_VERSION = ReadShort(4);
 
 #include "RPakStructs.bt"
 
@@ -184,7 +184,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             };
         }
     }
-    else if( AssetEntries[i].Magic == "uimg" && false)
+    else if( AssetEntries[i].Magic == "uimg")
     {
         struct UIHashEntry
         {
@@ -194,21 +194,21 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 
         UIMGHeader uh<hidden=false>;
 
-        GTPO(uh.TextureOffsetsIndex, uh.TextureOffsetsOffset);
+        //GTPO(uh.TextureOffsetsIndex, uh.TextureOffsetsOffset);
 
-        UIImageOffset offsets[uh.TextureOffsetsCount];
+        //UIImageOffset offsets[uh.TextureOffsetsCount];
 
-        GTPO(uh.TextureHashesIndex, uh.TextureHashesOffset);
+        //GTPO(uh.TextureHashesIndex, uh.TextureHashesOffset);
 
-        struct {
-            UIHashEntry h[uh.TextureOffsetsCount];
-        } hashes;
+        //struct {
+        //    UIHashEntry h[uh.TextureOffsetsCount];
+        //} hashes;
 
         //UIHashEntry hashes[uh.TextureOffsetsCount];
 
-        GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
+        //GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
 
-        UIImageUV uvs[uh.TextureOffsetsCount];
+        //UIImageUV uvs[uh.TextureOffsetsCount];
     }
     else if( AssetEntries[i].Magic == "uiia")
     {
@@ -257,6 +257,9 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
                 RuiArg arg[g.argCount]<read=Str("%X", this.short_hash & 0xFFFF)>;
             } args;
         }
+
+        GTPTR(g.pArgNames);
+        char names;
     }
     else if( AssetEntries[i].Magic == "txls" )
     {
