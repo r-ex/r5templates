@@ -184,9 +184,9 @@ string ReadSegmentFlags(uint flags)
         case 0x1:
             value += "CPU";
             break;
-        //case 0x2:
-            //value += "UNK_2";
-            //break;
+        case 0x2:
+            value += "TEMP";
+            break;
         case 0x20:
             value += "SERVER";
             break;
@@ -572,6 +572,7 @@ struct RSONNode
 
 enum <char> RuiArgumentType_t
 {
+  TYPE_NONE = 0,
   TYPE_STRING = 0x1,
   TYPE_ASSET = 0x2,
   TYPE_BOOL = 0x3,
@@ -626,8 +627,8 @@ struct RuiArg
 {
     RuiArgumentType_t type;
     char unk1;
-    short unk2;
-    short unk3;
+    short valueOffset;
+    short nameOffset;
     short short_hash;
 };
 
@@ -748,4 +749,14 @@ struct MaterialForAspect
     RPakGuid wldu;
     RPakGuid ptcu;
     RPakGuid ptcs;
+};
+
+struct PtchHeader
+{
+	uint32_t unknown_1; // always FF 00 00 00?
+	uint32_t patchedPakCount;
+
+	RPakPtr pPakNames;
+
+	RPakPtr pPakPatchNums;
 };
