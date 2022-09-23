@@ -317,9 +317,24 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     }
     else if( AssetEntries[i].Magic == "aseq" )
     {
-        //AnimHeader anhdr <read=ReadAnimHeader>;
-        //GTPTR(anhdr.data);
-        //char data;
+        AnimHeader anhdr <read=ReadString(pageoffsets[this.name.Index] + this.name.Offset)>;
+        GTPTR(anhdr.data);
+
+        struct {
+            mstudioseqdesc_t animseq <read=Str("SD: %s", ReadString(startof(this) + this.szlabelindex))>;
+    
+            FSeek(startof(animseq) + animseq.animindexindex);
+            struct
+            {
+                int animindex[animseq.numblends];
+            } animoffsets;
+    
+            for(j = 0; j < animseq.numblends; ++j)
+            {
+                FSeek(startof(animseq) + animoffsets.animindex[j]);
+                mstudioanimdescv54_t anim <read=Str("ANIMDESC: '%s'", ReadString(startof(this) + this.sznameindex))>;
+            }
+        } an;
     }
     else if( AssetEntries[i].Magic == "mt4a" )
     {

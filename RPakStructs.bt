@@ -4,6 +4,11 @@
 typedef uint64 RPakGuid<format=hex>;
 typedef RPakGuid RPakGuidRef<fgcolor=cYellow>;
 
+struct Vector3
+{
+    float x,y,z;
+};
+
 struct PakHdr_t
 {
 	char id[4] <fgcolor=cLtGreen>;
@@ -760,3 +765,208 @@ struct PtchHeader
 
 	RPakPtr pPakPatchNums;
 };
+
+struct mstudioseqdesc_t
+{
+	int baseptr;
+
+	int	szlabelindex <read=ReadString(startof(parentof(this)) + this)>;
+
+	int szactivitynameindex <read=ReadString(startof(parentof(this)) + this)>;
+
+	int flags; // looping/non-looping flags
+
+	int activity; // initialized at loadtime to game DLL values
+	int actweight;
+
+	int numevents;
+	int eventindex;
+	
+	Vector3 bbmin; // per sequence bounding box
+	Vector3 bbmax;		
+
+	int numblends;
+
+	// Index into array of shorts which is groupsize[0] x groupsize[1] in length
+	int animindexindex;
+
+	int movementindex; // [blend] float array for blended movement
+	int groupsize[2];
+	int paramindex[2]; // X, Y, Z, XR, YR, ZR
+	float paramstart[2]; // local (0..1) starting value
+	float paramend[2]; // local (0..1) ending value
+	int paramparent;
+
+	float fadeintime; // ideal cross fate in time (0.2 default)
+	float fadeouttime; // ideal cross fade out time (0.2 default)
+
+	int localentrynode; // transition node at entry
+	int localexitnode; // transition node at exit
+	int nodeflags; // transition rules
+
+	float entryphase; // used to match entry gait
+	float exitphase; // used to match exit gait
+	
+	float lastframe; // frame that should generation EndOfSequence
+
+	int nextseq; // auto advancing sequences
+	int pose; // index of delta animation between end and nextseq
+
+	int numikrules;
+
+	int numautolayers;
+	int autolayerindex;
+
+	int weightlistindex;
+
+	int posekeyindex;
+
+	int numiklocks;
+	int iklockindex;
+
+	// Key values
+	int keyvalueindex;
+	int keyvaluesize;
+
+	int cycleposeindex; // index of pose parameter to use as cycle index
+
+    int activitymodifierindex;
+	int numactivitymodifiers;
+
+	int unk;
+    int unk1;
+
+    int unkindex;
+
+    int unk2;
+};
+
+struct mstudioanimdescv54_t
+{
+	int baseptr;
+	int sznameindex;
+
+	float fps;
+
+	int flags <read=ReadAnimDescFlags>;
+
+    int numframes;
+
+    // piecewise movement
+    int nummovements;
+    int movementindex;
+
+    int compressedikerrorindex;
+    int animindex; // non-zero when anim data isn't in sections
+
+    int numikrules;
+    int ikruleindex; // non-zero when IK data is stored in the mdl
+
+    int numlocalhierarchy;
+    int localhierarchyindex;
+
+    int sectionindex;
+    int sectionframes; // number of frames used in each fast lookup section, zero if not used
+};
+
+string ReadAnimDescFlags(uint flags)
+{
+    string value = "";
+
+    if(flags == 0)
+        return "";
+
+    int i = 0;
+    int flag = 0;
+
+    int flagsFound = 0;
+
+    for(i = 0; i < 32; i++)
+    {
+        flag = flags & (1 << i);
+
+        if(flag != 0)
+        {
+            flagsFound++;
+        }
+    }
+
+    int flagCounter = 0;
+    for(i = 0; i < 32; i++)
+    {
+        flag = flags & (1 << i);
+
+
+        // these may not all be right
+        switch(flag)
+        {
+        case 0:
+            break;
+        case 0x1:
+            value += "LOOPING";
+            break;
+        case 0x2:
+            value += "SNAP";
+            break;
+        case 0x4:
+            value += "DELTA";
+            break;
+        case 0x8:
+            value += "AUTOPLAY";
+            break;
+        case 0x10:
+            value += "POST";
+            break;
+        case 0x20:
+            value += "ALLZEROS";
+            break;
+        case 0x40:
+            value += "FRAMEANIM";
+            break;
+        case 0x80:
+            value += "CYCLEPOSE";
+            break;
+        case 0x100:
+            value += "REALTIME";
+            break;
+        case 0x200:
+            value += "LOCAL";
+            break;
+        case 0x400:
+            value += "HIDDEN";
+            break;
+        case 0x800:
+            value += "OVERRIDE";
+            break;
+        case 0x1000:
+            value += "ACTIVITY";
+            break;
+        case 0x2000:
+            value += "EVENT";
+            break;
+        case 0x4000:
+            value += "WORLD";
+            break;
+        case 0x8000:
+            value += "NOFORCELOOP";
+            break;
+        case 0x10000:
+            value += "EVENT_CLIENT";
+            break;
+        default:
+            value += Str("UNK_%x", flag);
+            break;
+        }
+
+        if(flag != 0)
+        {
+            flagCounter++;
+            if(flagCounter < flagsFound)
+            {
+                value += " | ";
+            }
+        }
+    }
+
+    return value;
+}
