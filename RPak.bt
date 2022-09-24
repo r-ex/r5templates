@@ -19,6 +19,7 @@ local const uint32 FILE_VERSION = ReadShort(4);
 
 #include "RPakStructs.bt"
 
+
 PakHdr_t pakhdr <fgcolor=0x5268F7>;
 
 Assert(pakhdr.dcmpSize == FileSize(), "Invalid dcmpSize. Is your pak compressed?");
@@ -71,6 +72,7 @@ void GTPTR(RPakPtr& ptr)
 char PatchData[patchSizeToSkip];
 
 local uint64 i = 0;
+local int k = 1;
 for(i = pageStart; i < pakhdr.PageCount; ++i)
 {
     pageoffsets[i] = FTell();
@@ -321,8 +323,41 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         GTPTR(anhdr.data);
 
         struct {
-            mstudioseqdesc_t animseq <read=Str("SD: %s", ReadString(startof(this) + this.szlabelindex))>;
+            mstudioseqdesc_t animseq <bgcolor=0xf0b27a, read=Str("SD: %s", ReadString(startof(this) + this.szlabelindex))>;
     
+            if(animseq.posekeyindex > 0)
+            {
+                FSeek(startof(animseq) + animseq.posekeyindex);
+                posekey_t posekey <bgcolor=0x55ee00>;
+            }
+        
+            if(animseq.numevents > 0)
+            {
+                FSeek(startof(animseq) + animseq.eventindex);
+                for(j = 0; j < animseq.numevents; j++)
+                {
+                    mstudioevent_t seqevent <bgcolor=0x21fe7a, read=ReadString(startof(this) + this.szeventindex)>;
+                }
+            }
+        
+            if(animseq.numautolayers > 0)
+            {
+                FSeek(startof(animseq) + animseq.autolayerindex);
+                for(j = 0; j < animseq.numautolayers; j++)
+                {
+                    mstudioautolayer_t autolayers <bgcolor=0x226600>;
+                }
+            }
+            
+            FSeek(startof(animseq) + animseq.weightlistindex);
+            //seqweightlist_t weightlist <bgcolor=0xe1f27a>;
+            float weightlist <bgcolor=0xe1f27a>;
+        
+            /*struct blendgroup_t
+            {
+                int16 blends[animseq[i].groupsize[0] * animseq[i].groupsize[1]];
+            };*/
+
             FSeek(startof(animseq) + animseq.animindexindex);
             struct
             {
@@ -332,7 +367,34 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             for(j = 0; j < animseq.numblends; ++j)
             {
                 FSeek(startof(animseq) + animoffsets.animindex[j]);
-                mstudioanimdescv54_t anim <read=Str("ANIMDESC: '%s'", ReadString(startof(this) + this.sznameindex))>;
+                mstudioanimdescv54_t anim <bgcolor=0xdc7633, read=Str("ANIMDESC: '%s'", ReadString(startof(this) + this.sznameindex))>;
+                
+                if(anim.sectionindex > 0)
+                {
+                    sectionindexes_t sectionindexes;
+                    local int sectionlength = (anim.numframes / anim.sectionframes) + 1; // it was breaking with +2 but it was correct for others.
+
+                    for(j = 0; j < sectionlength; j++)
+                    {
+                        FSeek(startof(anim) + sectionindexes.sectionoffsets[j].animindex);
+            
+                        if(sectionindexes.sectionoffsets[j].animindex > 0)
+                        {
+                            for (k = 0; k < 1; k++)
+                            {   
+                                byte flag;
+                                //mstudio_rle_anim_t sectionanimheader <bgcolor=0xFF1122>;
+                                //numsectionanimboneheader += 1;
+                                //FSkip(sectionanimheader[numsectionanimboneheader - 1].nextoffset - 32);
+                
+                                /*if (sectionanimheader[numsectionanimboneheader - 1].nextoffset <= 0) 
+		                        {
+			                        break;
+		                        }*/
+                            };
+                        }
+                    };
+                }                            
             }
         } an;
     }
