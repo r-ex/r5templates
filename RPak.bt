@@ -110,13 +110,14 @@ string ReadTextureName(TextureHeader& th)
 };
 
 local uint64 j = 0;
+local int numbones = 0;
 for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 {
     GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
 
     if( AssetEntries[i].Magic == "efct" )
     {
-        char efct;
+        //char efct;
     }
     else if( AssetEntries[i].Magic == "txtr" )
     {
@@ -219,16 +220,35 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
         RUIImage ruiimage <read=ReadString(pageoffsets[this.NameIndex] + this.NameOffset)>;
     }
-    else if( AssetEntries[i].Magic == "matl" )
+    else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version == 15)
     {
-        if(FILE_VERSION == 8)
-            MaterialHeader mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
-        else
-            MaterialHeaderTF mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
-        //Printf("%s\n", );
-        //Printf("unk: %i, uses: %i\n", AssetEntries[i].Un2, AssetEntries[i].UsesCount);
-        //FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
-        //char rdp;
+        MaterialHeaderV15 mh <read=ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset), hidden=false>;
+        
+        FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+        MaterialCPUHeader matlcpuheader;
+
+        FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
+        char cpudata;
+    }
+    else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version >= 16)
+    {
+        MaterialHeaderV16 mh <read=ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset), hidden=false>;
+
+        FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+        MaterialCPUHeader matlcpuheader;
+
+        FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
+        char cpudata;
+    }
+    else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version == 12)
+    {
+        MaterialHeaderTF mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
+
+        FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+        MaterialCPUHeader matlcpuheader;
+
+        FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
+        char cpudata;
     }
     else if( AssetEntries[i].Magic == "shds" )
     {
@@ -243,6 +263,9 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     else if( AssetEntries[i].Magic == "mdl_" )
     {
         ModelHeader mdlhdr <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset)>;
+        GTPTR(mdlhdr.data);
+
+        char data;
     }
     else if( AssetEntries[i].Magic == "ui\0\0" )
     {
@@ -316,15 +339,17 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 
         GTPTR(anir.keys[0]);
         char fr;
-    }
+    }*/
     else if( AssetEntries[i].Magic == "aseq" )
     {
-        AnimHeader anhdr <read=ReadString(pageoffsets[this.name.Index] + this.name.Offset)>;
+        AnimHeaderV10 anhdr <read=ReadString(pageoffsets[this.name.Index] + this.name.Offset)>;
         GTPTR(anhdr.data);
 
         struct {
             mstudioseqdesc_t animseq <bgcolor=0xf0b27a, read=Str("SD: %s", ReadString(startof(this) + this.szlabelindex))>;
     
+            numbones = (animseq.animindexindex - animseq.weightlistindex) / 4;
+
             if(animseq.posekeyindex > 0)
             {
                 FSeek(startof(animseq) + animseq.posekeyindex);
@@ -351,12 +376,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             
             FSeek(startof(animseq) + animseq.weightlistindex);
             //seqweightlist_t weightlist <bgcolor=0xe1f27a>;
-            float weightlist <bgcolor=0xe1f27a>;
-        
-            /*struct blendgroup_t
-            {
-                int16 blends[animseq[i].groupsize[0] * animseq[i].groupsize[1]];
-            };*/
+            float weightlist[numbones] <bgcolor=0xe1f27a>;
 
             FSeek(startof(animseq) + animseq.animindexindex);
             struct
@@ -364,36 +384,23 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
                 int animindex[animseq.numblends];
             } animoffsets;
     
+            
+
             for(j = 0; j < animseq.numblends; ++j)
             {
                 FSeek(startof(animseq) + animoffsets.animindex[j]);
                 mstudioanimdescv54_t anim <bgcolor=0xdc7633, read=Str("ANIMDESC: '%s'", ReadString(startof(this) + this.sznameindex))>;
                 
+                FSeek(startof(anim[j]) + anim[j].ikruleindex);
+	            for (k = 0; k < anim[j].numikrules; ++k)
+	            {
+		            mstudioikrule_t animikrule <bgcolor=cGreen>;
+		            //numikrule += 1;
+	            };
+
                 if(anim.sectionindex > 0)
                 {
-                    sectionindexes_t sectionindexes;
-                    local int sectionlength = (anim.numframes / anim.sectionframes) + 1; // it was breaking with +2 but it was correct for others.
-
-                    for(j = 0; j < sectionlength; j++)
-                    {
-                        FSeek(startof(anim) + sectionindexes.sectionoffsets[j].animindex);
-            
-                        if(sectionindexes.sectionoffsets[j].animindex > 0)
-                        {
-                            for (k = 0; k < 1; k++)
-                            {   
-                                byte flag;
-                                //mstudio_rle_anim_t sectionanimheader <bgcolor=0xFF1122>;
-                                //numsectionanimboneheader += 1;
-                                //FSkip(sectionanimheader[numsectionanimboneheader - 1].nextoffset - 32);
-                
-                                /*if (sectionanimheader[numsectionanimboneheader - 1].nextoffset <= 0) 
-		                        {
-			                        break;
-		                        }*/
-                            };
-                        }
-                    };
+                    
                 }                            
             }
         } an;

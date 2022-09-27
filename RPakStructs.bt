@@ -228,20 +228,20 @@ string ReadSegmentFlags(uint flags)
 //
 // MATERIALS 
 //
-struct UnknownMaterialSection
+struct UnknownMaterialSectionV15
 {
-	// nulling these bytes makes the material stop drawing entirely
-	uint32_t Unknown5[8];
-
-	uint32_t Unknown6;
-
-	// both of these are required
-
-	// seems to be some kind of render/visibility flags.
-	uint16_t Flags1;
-	uint16_t Flags2;
-
-	uint64_t Padding;
+    // Spoon - I have kept the names that Rika made for the most part here, except for adding m_ 
+    
+    // required but seems to follow a pattern. maybe related to "Unknown2" above?
+    // nulling these bytes makes the material stop drawing entirely
+    uint32_t m_Unknown1[8];
+    
+    // for more details see the 'UnknownMaterialSectionV12' struct.
+    uint32_t m_UnkRenderFlags;
+    uint16_t m_VisibilityFlags; // different render settings, such as opacity and transparency.
+    uint16_t m_FaceDrawingFlags; // how the face is drawn, culling, wireframe, etc.
+    
+    uint64_t m_Padding;
 };
 
 struct UnknownMaterialSectionTF
@@ -278,42 +278,116 @@ struct MaterialHeaderTF
 
 };
 
-struct MaterialHeader
+struct MaterialCPUHeader
 {
-	uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
-	uint64_t Padding; // all null bytes
-	uint64_t AssetGUID <format=hex>; // for some reason this is the material's guid
+	RPakPtr  data; // points to the rest of the cpu data. maybe for colour?
+	uint32_t size;
+	uint32_t version; // every unknown is now either datasize, version, or flags
+};
 
-	RPakPtr Name; // asset path
-	RPakPtr SurfaceName; // surface name (as defined in surfaceproperties.rson)
-	uint64_t Padding;
+struct MaterialHeaderV15
+{
+	uint64_t m_VtblReserved; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]; // Un-used.
+	uint64_t m_nGUID; // guid of this material asset
 
+	RPakPtr m_pszName; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t GUIDRefs[4]; // default asset guids
-	uint64_t ColpassGUID; // may be blank if this is the colpass asset
-	uint64_t ShaderSetGUID;
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: DepthShadowTight
+	// IDX 5: ColPass
 
-	RPakPtr TextureGUIDs; // texture guids
+	uint64_t m_GUIDRefs[5]; // Required to have proper textures.
+	uint64_t m_pShaderSet; // guid of the shaderset asset that this material uses
 
-	RPakPtr TextureGUIDs2;
-
-	uint16_t UnkSignature;
-	uint16_t Width;
-	uint16_t Height;
-	uint16_t Unknown;
-
-	uint32_t Flags;
-	uint32_t Unknown1;
-
-	uint32_t Unknown2; // REQUIRED
-
-	uint32_t Alignment;
-
-	// neither of these 2 seem to be required
-	uint32_t something;
+	RPakPtr m_pTextureHandle; // TextureGUID Map
+	RPakPtr m_pStreamingTextureHandles; // Streamable TextureGUID Map
+	
+	int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
+	int16 m_nWidth;
+	int16 m_nHeight;
+	int16 m_Unknown1;
+	
+	uint32_t m_Flags;
+	uint32_t m_Unknown2;
+	
+	uint32_t m_Unknown3; // REQUIRED but why?
+	
+	uint32_t m_Unknown4;
+	
+	// of these 2 seem to be required
+	uint32_t m_Flags2;
 	uint32_t something2;
+	
+	UnknownMaterialSectionV15 m_UnknownSections[2];
 
-	UnknownMaterialSection UnkSections[2];
+	uint8_t bytef0;
+	uint8_t bytef1;
+	uint8_t bytef2; // used '4' and '8' observed
+	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+
+	uint32_t unk;
+
+    uint64 txanhash;
+};
+
+// header size unchanged all the way until v20, does not mean vars have not changed within
+struct MaterialHeaderV16
+{
+	uint64_t m_VtblReserved; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t m_Padding[0x8]; // Un-used.
+	uint64_t m_nGUID; // guid of this material asset
+
+	RPakPtr m_pszName; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2; // pointer to surfaceprop2 
+
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: DepthShadowTight
+	// IDX 5: ColPass
+
+	uint64_t m_GUIDRefs[5]; // Required to have proper textures.
+	uint64_t m_pShaderSet; // guid of the shaderset asset that this material uses
+
+	RPakPtr m_pTextureHandle; // TextureGUID Map
+	RPakPtr m_pStreamingTextureHandles; // Streamable TextureGUID Map
+	
+	int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
+	int16 m_nWidth;
+	int16 m_nHeight;
+	int16 m_Unknown1;
+	
+	uint32_t m_Flags;
+	uint32_t m_Unknown2;
+	
+	uint32_t m_Unknown3; // REQUIRED but why?
+	
+	uint32_t m_Unknown4;
+	
+	// of these 2 seem to be required
+	uint32_t m_Flags2;
+	uint32_t something2;
+	
+	UnknownMaterialSectionV15 m_UnknownSections;
+
+    uint32 unk_v16[2];
+
+    uint8_t bytef0;
+	uint8_t bytef1;
+	uint8_t bytef2; // used '4' and '8' observed
+	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+
+	uint32_t unk;
+
+    uint64 txanhash;
+
+    uint32 unk1_v16[6];
 };
 
 //
@@ -716,13 +790,56 @@ struct SettingsAssetHeader
 struct AnimHeader
 {
 	RPakPtr data;
+	RPakPtr name;
+    RPakPtr modelhash;
 
+    uint32 modelcount; // to be verified on v7
+
+    uint32 reserved; // haha surely because this is used later?
+
+    RPakPtr stgshash;
+
+    uint32 stgscount; // to be verified on v7
+
+    uint32 reserved1; // hehe assuming like above :DDD
+};
+
+struct AnimHeaderV71
+{
+	RPakPtr data;
+	RPakPtr name;
+	RPakPtr modelhash; // hehe haha I love unverified assumptions
+
+    uint32 modelcount; // to be verified on v7
+
+    uint32 externaldatasize;
+
+    RPakPtr stgshash;
+
+    uint32 stgscount; // to be verified on v7
+
+    uint32 reserved1; // hehe assuming like above :DDD
+
+    RPakPtr externaldata;
+};
+
+struct AnimHeaderV10
+{
+	RPakPtr data;
 	RPakPtr name;
 
-	uint8_t Unknown[0x18];
+	uint64 Unknown;
 
-	uint32_t ModelHashIndex;
-	uint32_t ModelHashOffset;
+    uint16 modelcount;
+    uint16 stgscount;
+
+    uint32 externaldatasize;
+
+	RPakPtr modelhash;
+    RPakPtr efcthashes;
+    RPakPtr stgshash;
+
+    RPakPtr externaldata;
 };
 
 struct SubtitleHeader
@@ -871,6 +988,36 @@ struct mstudioanimdescv54_t
     int sectionframes; // number of frames used in each fast lookup section, zero if not used
 };
 
+struct mstudioanimdescv54_t_121
+{
+	int baseptr;
+	int sznameindex;
+
+	float fps;
+
+	int flags <read=ReadAnimDescFlags>;
+
+    int numframes;
+
+    // piecewise movement
+    int nummovements;
+    int movementindex;
+
+    int compressedikerrorindex;
+    int animindex; // non-zero when anim data isn't in sections
+
+    int numikrules;
+    int ikruleindex; // non-zero when IK data is stored in the mdl
+
+    //int numlocalhierarchy;
+    //int localhierarchyindex;
+
+    int sectionindex;
+    int sectionframes; // number of frames used in each fast lookup section, zero if not used
+
+    int unk[5];
+};
+
 struct mstudioanimsections_t
 {
 	int animindex;
@@ -1012,6 +1159,18 @@ struct mstudioevent_t
 	int szeventindex <read=ReadString(startof(parentof(this)) + this)>;
 };
 
+struct mstudioevent_t_121
+{
+	float cycle;
+	int	event;
+	eventtype type; // this will be 0 if old style I'd imagine
+	char options[256]; // this is the only difference compared to normal v54
+
+    int unk;
+
+	int szeventindex <read=ReadString(startof(parentof(this)) + this)>;
+};
+
 // autolayer flags
 //							0x0001
 //							0x0002
@@ -1104,6 +1263,8 @@ string ReadAutoLayerFlags(int flags)
 
 struct mstudioautolayer_t
 {
+    int64 guid; // until you can prove me otherwise this is a guid
+
 	short iSequence;
 	short iPose;
 
@@ -1119,4 +1280,53 @@ struct mstudioactivitymodifier_t_v53
 	int sznameindex <read=ReadString(startof(this) + this)>;
 
     int unk; // 0 or 1 observed.
+};
+
+// ik rule
+enum ikruletype
+{
+    IK_SELF = 1,
+    IK_WORLD = 2,
+    IK_GROUND = 3,
+    IK_RELEASE = 4,
+    IK_ATTACHMENT = 5,
+    IK_UNLATCH = 6
+};
+
+struct mstudioikrule_t
+{
+    int index;
+    ikruletype type;
+    int chain;
+    int bone;
+
+    int slot; // iktarget slot. Usually same as chain.
+    float height;
+    float radius;
+    float floor;
+    Vector3 pos;
+    Quaternion q;
+
+    float scale[6]; // these values are the same as what posscale (if it was used) and rotscale are.
+	int16 offset[6];
+
+    //int compressedikerrorindex;
+
+    int iStart;
+    //int ikerrorindex;
+
+    float start; // beginning of influence
+    float peak; // start of full influence
+    float tail; // end of full influence
+    float end; // end of all influence
+
+    float contact; // frame footstep makes ground concact
+    float drop; // how far down the foot should drop when reaching for IK
+    float top; // top of the foot box
+
+    int szattachmentindex; // name of world attachment
+
+    int unk;
+
+    //int unused[9];
 };
