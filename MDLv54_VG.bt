@@ -36,8 +36,8 @@ struct VGHeader
 	uint64 boneRemapOffset; // offset to bone remap buffer
 	uint64 boneRemapCount;  // number of "bone remaps" (size: 1)
 
-	uint64 submeshOffset;   // offset to submesh buffer
-	uint64 submeshCount;    // number of submeshes (size: 0x48)
+	uint64 meshOffset;   // offset to mesh buffer
+	uint64 meshCount;    // number of meshes (size: 0x48)
 
 	uint64 indexOffset;     // offset to index buffer
 	uint64 indexCount;      // number of indices (size: 2 (uint16_t))
@@ -49,8 +49,8 @@ struct VGHeader
 	uint64 extendedWeightsCount;    // number of bytes in extended weights buffer
 
     
-    // there is one for every LOD submesh
-    // i.e, unknownCount == lod.submeshCount for all LODs
+    // there is one for every LOD mesh
+    // i.e, unknownCount == lod.meshCount for all LODs
 	uint64 unknownOffset;   // offset to buffer
 	uint64 unknownCount;    // count (size: 0x30)
 
@@ -66,19 +66,19 @@ struct VGHeader
     char unused[0x40];
 };
 
-struct VGSubmesh
+struct VGMesh
 {
-	uint64 flags <fgcolor=cLtGreen, format=hex>;	// submesh flags
-	uint32 vertexOffset;			// start offset for this submesh's vertices
+	uint64 flags <fgcolor=cLtGreen, format=hex>;	// mesh flags
+	uint32 vertexOffset;			// start offset for this mesh's vertices
 	uint32 vertexSize;		        // number of bytes used from the vertex buffer
 	uint32 vertexCount;				// number of vertices
 	uint32 unk1;
-	uint32 extendedWeightsOffset;	// start offset for this submesh's "extended weights"
+	uint32 extendedWeightsOffset;	// start offset for this mesh's "extended weights"
 	uint32 extendedWeightsSize;     // size or count of extended weights
-	uint32 indexOffset;				// start offset for this submesh's "indices"
+	uint32 indexOffset;				// start offset for this mesh's "indices"
 	uint32 indexCount;				// number of indices
-	uint32 externalWeightsOffset;	// seems to be an offset into the "external weights" buffer for this submesh
-	uint32 externalWeightsCount;    // seems to be the number of "external weights" that this submesh uses
+	uint32 externalWeightsOffset;	// seems to be an offset into the "external weights" buffer for this mesh
+	uint32 externalWeightsCount;    // seems to be the number of "external weights" that this mesh uses
 	uint32 stripsOffset;			// Index into the strips structs
 	uint32 stripsCount;
 	uint32 Int15;
@@ -104,8 +104,8 @@ struct VGStrip
 
 struct VGLod
 {
-	uint16 submeshIndex;
-	uint16 submeshCount;
+	uint16 meshIndex;
+	uint16 meshCount;
 	float distance;
 };
 
@@ -135,56 +135,56 @@ struct unkdata
 FSeek(vhdr.unknownOffset);
 unkdata unk_data[vhdr.unknownCount]<bgcolor=cYellow>;
 
-for(i = 0; i < vhdr.submeshCount; ++i)
+for(i = 0; i < vhdr.meshCount; ++i)
 {
-    FSeek(vhdr.submeshOffset + (i * sizeof(VGSubmesh)));
+    FSeek(vhdr.meshOffset + (i * sizeof(VGMesh)));
 
-    VGSubmesh submesh <bgcolor=cLtRed>;
+    VGMesh mesh <bgcolor=cLtRed>;
 
-    if(submesh.flags == 0 || submesh.vertexCount == 0)
+    if(mesh.flags == 0 || mesh.vertexCount == 0)
         continue;
 
-    if(submesh.unk1 != 0)
+    if(mesh.unk1 != 0)
     {
-        Printf("unk1: %i\n", submesh.unk1);
+        Printf("unk1: %i\n", mesh.unk1);
     }
 
     // Indices
 
-    FSeek(vhdr.indexOffset + submesh.indexOffset);
+    FSeek(vhdr.indexOffset + mesh.indexOffset);
 
     struct
     {
-        short data[submesh.indexCount];
+        short data[mesh.indexCount];
     } indexData<read=Str("%i indices", sizeof(this.data) / 2), bgcolor=cLtBlue>;
 
     // Vertices
 
-    FSeek(vhdr.vertexOffset + submesh.vertexOffset);
+    FSeek(vhdr.vertexOffset + mesh.vertexOffset);
 
     struct
     {
-        char data[submesh.vertexSize * submesh.vertexCount];
+        char data[mesh.vertexSize * mesh.vertexCount];
     } vertexData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkBlue>;
 
 
-    if(submesh.extendedWeightsSize != 0)
+    if(mesh.extendedWeightsSize != 0)
     {
-        FSeek(vhdr.extendedWeightsOffset + submesh.extendedWeightsOffset);
+        FSeek(vhdr.extendedWeightsOffset + mesh.extendedWeightsOffset);
     
         struct
         {
-            char data[submesh.extendedWeightsSize];
+            char data[mesh.extendedWeightsSize];
         } extendedWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
     }
     
 
     // Strips
 
-    FSeek(vhdr.stripsOffset + (submesh.stripsOffset * sizeof(VGStrip)));
+    FSeek(vhdr.stripsOffset + (mesh.stripsOffset * sizeof(VGStrip)));
 
     struct
     {
-        VGStrip data[submesh.stripsCount];
+        VGStrip data[mesh.stripsCount];
     } stripData<read=Str("%i strips", sizeof(this.data) / sizeof(VGStrip)), bgcolor=cLtBlue>;
 }

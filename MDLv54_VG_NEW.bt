@@ -44,9 +44,9 @@ struct RMdlVGIndexCountPacked
 	uint64 Type : 8;
 };
 
-struct VGSubmesh
+struct VGMesh
 {
-	uint64 submeshFlags <fgcolor=cLtGreen, format=hex>;
+	uint64 flags <fgcolor=cLtGreen, format=hex>;
 	uint32 vertexSize;		// size in bytes per vertex
 	uint32 vertexCount;		// number of vertices
 
@@ -70,11 +70,11 @@ struct VGLod
 {
     char unk[4];
     uint32 dataSize;
-    short submeshCount;
+    short meshCount;
     byte unk1; // both of these bytes line up with the LOD index
     byte unk2;
     float distance;
-    uint64 submeshOffset;
+    uint64 meshOffset;
 };
 
 struct VGStrip
@@ -109,45 +109,44 @@ for(i = 0; i < vhdr.lodCount; ++i)
     VGLod lod <bgcolor=cPurple,read=Str("======== LOD %i ========", this.unk1)>;
 
 
-    for(j = 0; j < lod.submeshCount; ++j)
+    for(j = 0; j < lod.meshCount; ++j)
     {
-        FSeek(startof(lod.submeshOffset) + lod.submeshOffset + (j*sizeof(VGSubmesh)));
-        VGSubmesh submesh <read=Str("- %i vertices, %i indices, %i weights, %i strips", this.vertexCount, this.indexPacked.Count, this.extendedWeightsCount, this.stripsCount)>;
+        FSeek(startof(lod.meshOffset) + lod.meshOffset + (j*sizeof(VGMesh)));
+        VGMesh mesh <read=Str("- %i vertices, %i indices, %i weights, %i strips", this.vertexCount, this.indexPacked.Count, this.extendedWeightsCount, this.stripsCount)>;
     
-        if(submesh.submeshFlags == 0 || submesh.vertexCount == 0)
+        if(mesh.flags == 0 || mesh.vertexCount == 0)
             continue;
     
         // Indices
     
-        FSeek(startof(submesh.indexOffset) + submesh.indexOffset);
+        FSeek(startof(mesh.indexOffset) + mesh.indexOffset);
     
         struct
         {
-            short data[submesh.indexPacked.Count];
+            short data[mesh.indexPacked.Count];
         } indexData<read=Str("%i indices", sizeof(this.data) / 2), bgcolor=cLtBlue>;
     
         // Vertices
     
-        FSeek(startof(submesh.vertexOffset) + submesh.vertexOffset);
+        FSeek(startof(mesh.vertexOffset) + mesh.vertexOffset);
     
         struct
         {
-            char data[submesh.vertexSize * submesh.vertexCount];
+            char data[mesh.vertexSize * mesh.vertexCount];
         } vertexData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkBlue>;
 
         // External Weights
-        if(submesh.externalWeightsCount)
+        if(mesh.externalWeightsCount)
         {
-            FSeek(startof(submesh.externalWeightsOffset) + submesh.externalWeightsOffset);
+            FSeek(startof(mesh.externalWeightsOffset) + mesh.externalWeightsOffset);
         
-            
             struct
             {
-                char data[submesh.externalWeightsCount * 0x10];
+                char data[mesh.externalWeightsCount * 0x10];
             } externalWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkBlue>;
         }
 
-        FSeek(startof(submesh.stripsOffset) + submesh.stripsOffset);
+        FSeek(startof(mesh.stripsOffset) + mesh.stripsOffset);
         VGStrip strip<bgcolor=cYellow>;
 
     }
