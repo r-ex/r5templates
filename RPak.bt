@@ -33,9 +33,9 @@ if(pakhdr.PatchIndex)
     RpakPatchCompressPair PatchCompressPairs[pakhdr.PatchIndex] <fgcolor=cLtGreen>;
     uint16 PatchIndicesToFile[pakhdr.PatchIndex] <bgcolor=cDkYellow>;
 
-    patchSizeToSkip = TempPatchHeader.PatchDataSize;
-    pageStart = TempPatchHeader.PatchSegmentIndex;
-
+    patchSizeToSkip = TempPatchHeader.dataSize;
+    pageStart = TempPatchHeader.patchPageIdx;
+ 
     Printf("WARNING: Patch rpaks are not currently supported\n");
 }
 
@@ -57,6 +57,8 @@ if(exists(pakhdr.UnkCount3) && pakhdr.UnkCount3 > 0)
     char unk_nonpaged[pakhdr.UnkCount3];
 
 local uint64 pageoffsets[pakhdr.PageCount];
+
+
 
 // GoToPageOffset
 void GTPO(uint64 Index, uint64 Offset)
@@ -81,10 +83,9 @@ for(i = pageStart; i < pakhdr.PageCount; ++i)
     {
         local int idx = i;
         char data[Pages[i].dataSize];
-    } data <read=ReadSegmentFlags(VirtualSegments[Pages[this.idx].segIdx].flags)>;
+    } data <read=ReadSegmentFlags(VirtualSegments[Pages[this.idx].segIdx].flags), comment=Str("%i", this.idx)>;
 
 }
-
 // points to every instance of a "page idx, page offset" pointer within page data
 for(i = 0; i < pakhdr.DescriptorCount; ++i)
 {
@@ -109,6 +110,13 @@ string ReadTextureName(TextureHeader& th)
         return Str("0x%LX", th.NameHash);
 };
 
+string ReadSubtHashEntry(SubtHashEntry& sh, SubtitleHeader& subt)
+{
+    if(sh.hash == 0)
+        return "";
+
+    return ReadString(pageoffsets[subt.pEntries.Index] + subt.pEntries.Offset + sh.stringoffset);
+};
 local uint64 j = 0;
 local int numbones = 0;
 for(i = 0; i < pakhdr.AssetEntryCount; ++i)
@@ -263,9 +271,6 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     else if( AssetEntries[i].Magic == "mdl_" )
     {
         ModelHeader mdlhdr <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset)>;
-        GTPTR(mdlhdr.data);
-
-        char data;
     }
     else if( AssetEntries[i].Magic == "ui\0\0" )
     {
@@ -324,10 +329,12 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     }
     else if( AssetEntries[i].Magic == "subt" )
     {
+
         SubtitleHeader subt;
 
         GTPTR(subt.unk3);
-        char fr;
+
+        SubtHashEntry hashentry[subt.unk2]<read=ReadSubtHashEntry(this,subt)>;
     }
     else if( AssetEntries[i].Magic == "stgs" )
     {
@@ -339,7 +346,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 
         GTPTR(anir.keys[0]);
         char fr;
-    }*/
+    }
     else if( AssetEntries[i].Magic == "aseq" )
     {
         AnimHeaderV10 anhdr <read=ReadString(pageoffsets[this.name.Index] + this.name.Offset)>;
@@ -412,6 +419,6 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         struct {
             local int idx = i;
             char data[AssetEntries[i].SubHeaderSize];
-        } header_data <name=Str("header_%s", AssetEntries[this.idx].Magic), read=Str("size: %i, guid: %016LX", sizeof(this.data), AssetEntries[this.idx].NameHash)>;
+        } header_data <name=Str("header_%s", AssetEntries[this.idx].Magic), read=Str("size: %i, guid: %016LX", sizeof(this.data), AssetEntries[this.idx].NameHash), comment=Str("version: %i", AssetEntries[this.idx].Version)>;
     };
 }

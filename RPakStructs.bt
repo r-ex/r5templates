@@ -850,6 +850,11 @@ struct SubtitleHeader
     RPakPtr pEntries;
 };
 
+struct SubtHashEntry {
+    uint hash;
+    uint stringoffset;
+};
+
 struct Vector2
 {
     float x,y;
