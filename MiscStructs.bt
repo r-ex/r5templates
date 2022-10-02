@@ -15,6 +15,11 @@ struct Vector3
     float x,y,z;
 };
 
+struct Vector2
+{
+    float x,y;
+};
+
 typedef Vector3 Vector;
 
 // packed vector

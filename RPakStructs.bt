@@ -23,28 +23,45 @@ struct PakHdr_t
 	FILETIME TimeCreated <name="File Creation Time">;
     uint64 yes <format=hex>;
 
-	uint64 cmpSize;
+    if(FILE_VERSION >= 7)
+	    uint64 cmpSize;
 
     if(FILE_VERSION == 8)
 	    uint64 EmbeddedStarpakOffset;
 
-	uint64 Padding;
+    if(FILE_VERSION >= 7)
+	    uint64 Padding;
+
 	uint64 dcmpSize;
+
+    if(FILE_VERSION == 6)
+	    uint64 Padding;
 
     if(FILE_VERSION == 8)
 	    uint64 EmbeddedStarpakSize;
 	uint64 Padding2;
 
-	uint16 lenStarpakPaths;
+    if(FILE_VERSION == 6)
+	    uint32 lenStarpakPaths;
+    else
+        uint16 lenStarpakPaths;
 
     if(FILE_VERSION == 8)
 	    uint16 lenOptStarpakPaths;
 
-	uint16 VirtualSegmentCount;			// * 0x10
-	uint16 PageCount;		// * 0xC
+    if(FILE_VERSION == 6)
+    {
+	    uint32 VirtualSegmentCount;
+        uint32 PageCount;
+    }
+    else
+    {
+        uint16 VirtualSegmentCount;			// * 0x10
+	    uint16 PageCount;		// * 0xC
+    }
 
-
-    uint16 PatchIndex;
+     if(FILE_VERSION >= 7)
+        uint16 PatchIndex;
 
     if(FILE_VERSION == 8)
         uint16 align;
@@ -57,6 +74,9 @@ struct PakHdr_t
 
     uint32 UnkCount;
     uint32 UnkCount2;
+
+    if(FILE_VERSION == 6)
+        uint32 what;
 
     if(FILE_VERSION == 8)
     {
@@ -244,10 +264,18 @@ struct UnknownMaterialSectionV15
     uint64_t m_Padding;
 };
 
-struct UnknownMaterialSectionTF
+struct UnknownMaterialSectionV12
 {
-	// nulling these bytes makes the material stop drawing entirely
-	uint8_t Unknown5[56];
+	uint32_t UnkRenderLighting;
+	uint32_t UnkRenderAliasing;
+	uint32_t UnkRenderDoF;
+	uint32_t UnkRenderUnknown;
+
+	uint32_t m_UnknownFlags; // this changes sometimes.
+	uint16_t m_VisibilityFlags; // different render settings, such as opacity and transparency.
+	uint16_t m_FaceDrawingFlags; // how the face is drawn, culling, wireframe, etc.
+
+	uint64_t m_Padding;
 };
 
 struct MaterialHeaderTF
@@ -261,16 +289,33 @@ struct MaterialHeaderTF
 	uint64_t Padding;
 
 
-	uint64_t GUIDRefs[4]; // default asset guids
-	UnknownMaterialSectionTF UnkSection;
-	uint64_t ColpassGUID <format=hex>; // may be blank if this is the colpass asset
+	uint64_t GUIDRefs[3]; // default asset guids
+    uint64_t ColpassGUID <format=hex>; // may be blank if this is the colpass asset
+
+	UnknownMaterialSectionV12 UnkSection[2];
+
 	uint64_t ShaderSetGUID <format=hex>;
 
 	RPakPtr TextureGUIDs; // texture guids
-
 	RPakPtr TextureGUIDs2;
 
-    uint8_t Unknown[0x20];
+    int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
+
+	uint32_t m_Flags; // see ImageFlags in the apex struct.
+	int16 m_Unk1; // might be "m_Unknown2"
+
+	uint64_t m_Padding1; // haven't observed anything here, however I really doubt this is actually padding.
+
+	// seems to be 0xFBA63181 for loadscreens
+	//uint32_t m_Unknown3; // name carried over from apex struct.
+
+    int16 cool[2];
+
+	uint32_t m_Unk2; // this might actually be "m_Unknown4"
+
+	uint32_t m_Flags2;
+	uint32_t something2; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
+
     uint16_t Width;
     uint16_t Height;
 
@@ -388,6 +433,133 @@ struct MaterialHeaderV16
     uint64 txanhash;
 
     uint32 unk1_v16[6];
+};
+
+struct MaterialHeaderV20
+{
+	uint64_t unk_v20; // not 
+	uint8_t m_Padding[0x8]; // Un-used.
+	uint64_t m_nGUID; // guid of this material asset
+
+	RPakPtr m_pszName; // pointer to partial asset path
+	RPakPtr m_pszSurfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
+	RPakPtr m_pszSurfaceProp2; // pointer to surfaceprop2 
+
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: DepthShadowTight
+	// IDX 5: ColPass
+
+	uint64_t m_GUIDRefs[5]; // Required to have proper textures.
+	uint64_t m_pShaderSet; // guid of the shaderset asset that this material uses
+
+	RPakPtr m_pTextureHandle; // TextureGUID Map
+	RPakPtr m_pStreamingTextureHandles; // Streamable TextureGUID Map
+	
+	int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
+	int16 m_nWidth;
+	int16 m_nHeight;
+	int16 m_Unknown1;
+	
+	uint32_t m_Flags;
+	uint32_t m_Unknown2;
+	
+	uint32_t m_Unknown3; // REQUIRED but why?
+	
+	uint32_t m_Unknown4;
+	
+	// of these 2 seem to be required
+	uint32_t m_Flags2;
+	uint32_t something2;
+	
+	UnknownMaterialSectionV15 m_UnknownSections;
+
+    float unkfloat_v20[2];
+
+    uint8_t bytef0;
+	uint8_t bytef1;
+	uint8_t bytef2; // used '4' and '8' observed
+	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+
+	uint32_t unk; // seen this as '1'
+
+    uint64 txanhash;
+
+    uint32 unk1_v16[5];
+
+    float unkfloat1_v20;
+};
+
+struct uvTransformMatrix
+{
+	// this section is actually broken up into three parts.
+
+	// c_uvRotScaleX
+	float uvScaleX;
+	float uvRotationX; // rotation, but w e i r d.
+
+	// c_uvRotScaleY
+	float uvRotationY; //counter clockwise, 0-1, exceeding one causes Weird Stuff to happen.
+	float uvScaleY;
+
+	// c_uvTranslate
+	float uvTranslateX;
+	float uvTranslateY;
+};
+
+// some of these vary so this is just very generic
+struct MatlCPUData_V12
+{
+	// the assignment of these depends on the shader set, they work similarly to texturetransforms in normal source.
+	uvTransformMatrix c_uv1; // this is frequently used for detail textures.
+	uvTransformMatrix c_uv2;
+	uvTransformMatrix c_uv3;
+
+	Vector2 c_uvDistortionIntensity; // distortion on the { x, y } axis.
+	Vector2 c_uvDistortion2Intensity; // see above, but for a second distortion texture.
+
+	float c_fogColorFactor;
+
+	float c_layerBlendRamp; // blend intensity (assumed), likely the hardness/softness of the two textures meshing.
+
+	Vector3 c_albedoTint; // color of the albedo texture.
+	float c_opacity; // untested.
+
+	float c_useAlphaModulateSpecular;
+	float c_alphaEdgeFadeExponent;
+	float c_alphaEdgeFadeInner;
+	float c_alphaEdgeFadeOuter;
+
+	float c_useAlphaModulateEmissive; // almost always set to 1.
+	float c_emissiveEdgeFadeExponent;
+	float c_emissiveEdgeFadeInner;
+	float c_emissiveEdgeFadeOuter;
+
+	float c_alphaDistanceFadeScale;
+	float c_alphaDistanceFadeBias;
+	float c_alphaTestReference;
+
+	float c_aspectRatioMulV; // this is equal to width divided by height see: 16/9~, not clear what it actually does.
+
+	Vector3 c_emissiveTint; // color of the emission, this is normally set to { 0.0, 0.0, 0.0 } if you don't have an emission mask.
+
+	float c_shadowBias;
+
+	float c_tsaaDepthAlphaThreshold;
+	float c_tsaaMotionAlphaThreshold;
+	float c_tsaaMotionAlphaRamp;
+	uint32_t c_tsaaResponsiveFlag; // this is 0 or 1 I think.
+
+	float c_dofOpacityLuminanceScale;
+
+	//float c_glitchStrength; // only used  sometimes. on 'Glitch' shadersets, if used 'pad_CBufUberStatic' is only two sections.
+
+	uint32_t pad_CBufUberStatic[3]; // this is reserved space for special values, three sections by default.
+
+	float c_perfGloss;
+
+	Vector3 c_perfSpecColor; // specular color, consistent across most materials.
 };
 
 //
@@ -513,7 +685,8 @@ struct RUIImage
 //
 struct UIMGHeader
 {
-	uint64_t Unk0;
+	float WidthRatio;
+    float HeightRatio;
 	uint16_t Width;
 	uint16_t Height;
 	uint16_t TextureOffsetsCount;
@@ -671,29 +844,29 @@ enum <char> RuiArgumentType_t
   TYPE_ARRAY = 0xF,
 };
 
-
 struct RUIHeader
 {
-	RPakPtr Name;
-	RPakPtr Unk1;
-	RPakPtr Unk2;
-    float elementWidth;
-    float elementHeight;
-    float UnkFloat3 <comment=Str("1/%f", parentof(this).elementWidth)>;
-    float UnkFloat4 <comment=Str("1/%f", parentof(this).elementHeight)>;
-    RPakPtr pArgNames;
-	RPakPtr pArgClusters;
-	RPakPtr pArgs;
-	short argCount;
-    short unk3;
-    uint32_t Unk4;
-	uint16_t Unk5;
-    uint16_t Unk6;
-    uint16_t Unk7;
-    uint16_t argClusterCount;
-    RPakPtr Unk8;
-    RPakPtr Unk9;
-    RPakPtr Unk10;
+	RPakPtr name;
+	RPakPtr values;
+	RPakPtr unk2;
+	float elementWidth;
+	float elementHeight;
+	float elementWidthRatio <comment=Str("1/%f", parentof(this).elementWidth)>;
+    float elementHeightRatio <comment=Str("1/%f", parentof(this).elementHeight)>;
+	RPakPtr argNames;
+	RPakPtr argClusters;
+	RPakPtr args;
+	short argCount; // number of slots for arguments. not all are used
+	short unk10Count; // number of "headers" unk10 leads to, if 0 none present.
+	uint16_t unk4;
+    uint16_t valueSize; // size of values in bytes
+	uint16_t unk5;
+	uint16_t unk6;
+	uint16_t unk7;
+	uint16_t argClusterCount;
+	RPakPtr unk8;
+	RPakPtr unk9;
+	RPakPtr unk10; // leads to "headers" for data, the data being vectors
 };
 
 struct RuiArgCluster
@@ -713,6 +886,14 @@ struct RuiArg
     short short_hash;
 };
 
+struct RuiUnk10
+{
+    uint32_t dataCount; // number of vectors the ptr leads to.
+    uint16_t unk1;
+    uint16_t unk2;
+
+    RPakPtr data;
+};
 
 struct TextureListHeader_t
 {
@@ -787,59 +968,69 @@ struct SettingsAssetHeader
   char unk[12];
 }; // size = 72
 
-struct AnimHeader
+
+// aseq headers
+struct ASeqHeaderV7
 {
-	RPakPtr data;
-	RPakPtr name;
-    RPakPtr modelhash;
+	RPakPtr data; // pointer to raw rseq.
+	RPakPtr szname; // pointer to debug name, placed before raw rseq normally.
 
-    uint32 modelcount; // to be verified on v7
+	// this can point to a group of guids and not one singular one.
+	RPakPtr modelGuid;
+	uint32_t modelCount;
 
-    uint32 reserved; // haha surely because this is used later?
+    uint32_t reserved;
 
-    RPakPtr stgshash;
+	// this can point to a group of guids and not one singular one.
+	RPakPtr settingsGuid;
+	uint32_t settingsCount;
 
-    uint32 stgscount; // to be verified on v7
-
-    uint32 reserved1; // hehe assuming like above :DDD
+    uint32_t reserved1; // assumed
 };
 
-struct AnimHeaderV71
+struct ASeqHeaderV71
 {
-	RPakPtr data;
-	RPakPtr name;
-	RPakPtr modelhash; // hehe haha I love unverified assumptions
+    RPakPtr data; // pointer to raw rseq.
+    RPakPtr szname; // pointer to debug name, placed before raw rseq normally.
 
-    uint32 modelcount; // to be verified on v7
+	// this can point to a group of guids and not one singular one.
+	RPakPtr modelGuid;
+	uint32_t modelCount; // to be verified on v7
 
-    uint32 externaldatasize;
+	// size of data that is not locally in the rseq.
+	uint32_t externalDataSize;
 
-    RPakPtr stgshash;
+	// this can point to a group of guids and not one singular one.
+	RPakPtr settingsGuid;
+	uint32_t settingsCount;
 
-    uint32 stgscount; // to be verified on v7
+    uint32_t reserved1; // assumed
 
-    uint32 reserved1; // hehe assuming like above :DDD
-
-    RPakPtr externaldata;
+	// pointer to data stored outside of the raw rseq.
+    RPakPtr externalData;
 };
 
-struct AnimHeaderV10
+struct ASeqHeaderV10
 {
-	RPakPtr data;
-	RPakPtr name;
+	RPakPtr data; // pointer to raw rseq.
+	RPakPtr szname; // pointer to debug name, placed before raw rseq normally.
 
-	uint64 Unknown;
+    uint64_t Unknown; // possible pointer, guid, or reserved space.
 
-    uint16 modelcount;
-    uint16 stgscount;
+	// counts for mdl_ and stgs assets, normally just one but can be multiples.
+    uint16_t modelCount;
+    uint16_t settingsCount;
 
-    uint32 externaldatasize;
+	// size of the external data.
+    uint32_t externalDataSize;
 
-	RPakPtr modelhash;
-    RPakPtr efcthashes;
-    RPakPtr stgshash;
+	// these can all point to a group of guids and not one singular one.
+    RPakPtr modelGuid;
+	RPakPtr effectGuid;
+    RPakPtr settingsGuid;
 
-    RPakPtr externaldata;
+	// data that is stored outside of the raw rseq.
+    RPakPtr externalData;
 };
 
 struct SubtitleHeader
@@ -850,15 +1041,16 @@ struct SubtitleHeader
     RPakPtr pEntries;
 };
 
+
 struct SubtHashEntry {
     uint hash;
     uint stringoffset;
 };
 
-struct Vector2
+/*struct Vector2
 {
     float x,y;
-};
+};*/
 
 
 // 816 bytes...
@@ -888,450 +1080,4 @@ struct PtchHeader
 	RPakPtr pPakNames;
 
 	RPakPtr pPakPatchNums;
-};
-
-struct mstudioseqdesc_t
-{
-	int baseptr;
-
-	int	szlabelindex <read=ReadString(startof(parentof(this)) + this)>;
-
-	int szactivitynameindex <read=ReadString(startof(parentof(this)) + this)>;
-
-	int flags; // looping/non-looping flags
-
-	int activity; // initialized at loadtime to game DLL values
-	int actweight;
-
-	int numevents;
-	int eventindex;
-	
-	Vector3 bbmin; // per sequence bounding box
-	Vector3 bbmax;		
-
-	int numblends;
-
-	// Index into array of shorts which is groupsize[0] x groupsize[1] in length
-	int animindexindex;
-
-	int movementindex; // [blend] float array for blended movement
-	int groupsize[2];
-	int paramindex[2]; // X, Y, Z, XR, YR, ZR
-	float paramstart[2]; // local (0..1) starting value
-	float paramend[2]; // local (0..1) ending value
-	int paramparent;
-
-	float fadeintime; // ideal cross fate in time (0.2 default)
-	float fadeouttime; // ideal cross fade out time (0.2 default)
-
-	int localentrynode; // transition node at entry
-	int localexitnode; // transition node at exit
-	int nodeflags; // transition rules
-
-	float entryphase; // used to match entry gait
-	float exitphase; // used to match exit gait
-	
-	float lastframe; // frame that should generation EndOfSequence
-
-	int nextseq; // auto advancing sequences
-	int pose; // index of delta animation between end and nextseq
-
-	int numikrules;
-
-	int numautolayers;
-	int autolayerindex;
-
-	int weightlistindex;
-
-	int posekeyindex;
-
-	int numiklocks;
-	int iklockindex;
-
-	// Key values
-	int keyvalueindex;
-	int keyvaluesize;
-
-	int cycleposeindex; // index of pose parameter to use as cycle index
-
-    int activitymodifierindex;
-	int numactivitymodifiers;
-
-	int unk;
-    int unk1;
-
-    int unkindex;
-
-    int unk2;
-};
-
-struct mstudioanimdescv54_t
-{
-	int baseptr;
-	int sznameindex;
-
-	float fps;
-
-	int flags <read=ReadAnimDescFlags>;
-
-    int numframes;
-
-    // piecewise movement
-    int nummovements;
-    int movementindex;
-
-    int compressedikerrorindex;
-    int animindex; // non-zero when anim data isn't in sections
-
-    int numikrules;
-    int ikruleindex; // non-zero when IK data is stored in the mdl
-
-    //int numlocalhierarchy;
-    //int localhierarchyindex;
-
-    int sectionindex;
-    int sectionframes; // number of frames used in each fast lookup section, zero if not used
-};
-
-struct mstudioanimdescv54_t_121
-{
-	int baseptr;
-	int sznameindex;
-
-	float fps;
-
-	int flags <read=ReadAnimDescFlags>;
-
-    int numframes;
-
-    // piecewise movement
-    int nummovements;
-    int movementindex;
-
-    int compressedikerrorindex;
-    int animindex; // non-zero when anim data isn't in sections
-
-    int numikrules;
-    int ikruleindex; // non-zero when IK data is stored in the mdl
-
-    //int numlocalhierarchy;
-    //int localhierarchyindex;
-
-    int sectionindex;
-    int sectionframes; // number of frames used in each fast lookup section, zero if not used
-
-    int unk[5];
-};
-
-struct mstudioanimsections_t
-{
-	int animindex;
-};
-
-struct sectionindexes_t
-{
-    mstudioanimsections_t sectionoffsets[(anim.numframes / anim.sectionframes) + 2] <bgcolor=cLtBlue>;
-};
-
-struct mstudio_rle_anim_t
-{
-	int16 size; // actually size and not next offset since it's always filled
-
-    Vector48 rawpos;
-
-    Quat64 rawrot;
-};
-
-string ReadAnimDescFlags(uint flags)
-{
-    string value = "";
-
-    if(flags == 0)
-        return "";
-
-    int i = 0;
-    int flag = 0;
-
-    int flagsFound = 0;
-
-    for(i = 0; i < 32; i++)
-    {
-        flag = flags & (1 << i);
-
-        if(flag != 0)
-        {
-            flagsFound++;
-        }
-    }
-
-    int flagCounter = 0;
-    for(i = 0; i < 32; i++)
-    {
-        flag = flags & (1 << i);
-
-
-        // these may not all be right
-        switch(flag)
-        {
-        case 0:
-            break;
-        case 0x1:
-            value += "LOOPING";
-            break;
-        case 0x2:
-            value += "SNAP";
-            break;
-        case 0x4:
-            value += "DELTA";
-            break;
-        case 0x8:
-            value += "AUTOPLAY";
-            break;
-        case 0x10:
-            value += "POST";
-            break;
-        case 0x20:
-            value += "ALLZEROS";
-            break;
-        case 0x40:
-            value += "FRAMEANIM";
-            break;
-        case 0x80:
-            value += "CYCLEPOSE";
-            break;
-        case 0x100:
-            value += "REALTIME";
-            break;
-        case 0x200:
-            value += "LOCAL";
-            break;
-        case 0x400:
-            value += "HIDDEN";
-            break;
-        case 0x800:
-            value += "OVERRIDE";
-            break;
-        case 0x1000:
-            value += "ACTIVITY";
-            break;
-        case 0x2000:
-            value += "EVENT";
-            break;
-        case 0x4000:
-            value += "WORLD";
-            break;
-        case 0x8000:
-            value += "NOFORCELOOP";
-            break;
-        case 0x10000:
-            value += "EVENT_CLIENT";
-            break;
-        default:
-            value += Str("UNK_%x", flag);
-            break;
-        }
-
-        if(flag != 0)
-        {
-            flagCounter++;
-            if(flagCounter < flagsFound)
-            {
-                value += " | ";
-            }
-        }
-    }
-
-    return value;
-}
-
-struct posekey_t
-{
-    float unk[animseq.groupsize[0] + animseq.groupsize[1]];
-};
-
-enum eventtype
-{
-    NEW_EVENT_STYLE = ( 1 << 10 ),
-};
-
-struct mstudioevent_t
-{
-	float cycle;
-	int	event;
-	eventtype type; // this will be 0 if old style I'd imagine
-	char options[256]; // this is the only difference compared to normal v54
-
-	int szeventindex <read=ReadString(startof(parentof(this)) + this)>;
-};
-
-struct mstudioevent_t_121
-{
-	float cycle;
-	int	event;
-	eventtype type; // this will be 0 if old style I'd imagine
-	char options[256]; // this is the only difference compared to normal v54
-
-    int unk;
-
-	int szeventindex <read=ReadString(startof(parentof(this)) + this)>;
-};
-
-// autolayer flags
-//							0x0001
-//							0x0002
-//							0x0004
-//							0x0008
-#define STUDIO_AL_POST		0x0010		// 
-//							0x0020
-#define STUDIO_AL_SPLINE	0x0040		// convert layer ramp in/out curve is a spline instead of linear
-#define STUDIO_AL_XFADE		0x0080		// pre-bias the ramp curve to compense for a non-1 weight, assuming a second layer is also going to accumulate
-//							0x0100
-#define STUDIO_AL_NOBLEND	0x0200		// animation always blends at 1.0 (ignores weight)
-//							0x0400
-//							0x0800
-#define STUDIO_AL_LOCAL		0x1000		// layer is a local context sequence
-//							0x2000
-#define STUDIO_AL_POSE		0x4000		// layer blends using a pose parameter instead of parent cycle
-#define STUDIO_AL_UNK_53	0x8000		// added in v53 (probably)
-                                        // I love this game I love this game I love this game I love this game I love this game I love this game
-
-string ReadAutoLayerFlags(int flags)
-{
-    string value = "";
-
-    if(flags == 0)
-        return "NONE";
-
-    int i = 0;
-    int flag = 0;
-
-    int flagsFound = 0;
-
-    for(i = 0; i < 32; i++)
-    {
-        flag = flags & (1 << i);
-
-        if(flag != 0)
-        {
-            flagsFound++;
-        }
-    }
-
-    int flagCounter = 0;
-    for(i = 0; i < 32; i++)
-    {
-        flag = flags & (1 << i);
-
-        switch(flag)
-        {
-        case 0:
-            break;
-        case 0x10:
-            value += "STUDIO_AL_POST";
-            break;
-        case 0x40:
-            value += "STUDIO_AL_SPLINE";
-            break;
-        case 0x80:
-            value += "STUDIO_AL_XFADE";
-            break;
-        case 0x200:
-            value += "STUDIO_AL_NOBLEND";
-            break;
-        case 0x1000:
-            value += "STUDIO_AL_LOCAL";
-            break;
-        case 0x4000:
-            value += "STUDIO_AL_POSE";
-            break;
-        case 0x8000:
-            value += "STUDIO_AL_UNK_53";
-            break;
-        default:
-            value += Str("UNK_%x", flag);
-            break;
-        }
-
-        if(flag != 0)
-        {
-            flagCounter++;
-            if(flagCounter < flagsFound)
-            {
-                value += " | ";
-            }
-        }
-    }
-
-    return value;
-}
-
-
-struct mstudioautolayer_t
-{
-    int64 guid; // until you can prove me otherwise this is a guid
-
-	short iSequence;
-	short iPose;
-
-	int flags <read=ReadAutoLayerFlags(this)>;
-	float start;	// beginning of influence
-	float peak;	// start of full influence
-	float tail;	// end of full influence
-	float end;	// end of all influence
-};
-
-struct mstudioactivitymodifier_t_v53
-{	
-	int sznameindex <read=ReadString(startof(this) + this)>;
-
-    int unk; // 0 or 1 observed.
-};
-
-// ik rule
-enum ikruletype
-{
-    IK_SELF = 1,
-    IK_WORLD = 2,
-    IK_GROUND = 3,
-    IK_RELEASE = 4,
-    IK_ATTACHMENT = 5,
-    IK_UNLATCH = 6
-};
-
-struct mstudioikrule_t
-{
-    int index;
-    ikruletype type;
-    int chain;
-    int bone;
-
-    int slot; // iktarget slot. Usually same as chain.
-    float height;
-    float radius;
-    float floor;
-    Vector3 pos;
-    Quaternion q;
-
-    float scale[6]; // these values are the same as what posscale (if it was used) and rotscale are.
-	int16 offset[6];
-
-    //int compressedikerrorindex;
-
-    int iStart;
-    //int ikerrorindex;
-
-    float start; // beginning of influence
-    float peak; // start of full influence
-    float tail; // end of full influence
-    float end; // end of all influence
-
-    float contact; // frame footstep makes ground concact
-    float drop; // how far down the foot should drop when reaching for IK
-    float top; // top of the foot box
-
-    int szattachmentindex; // name of world attachment
-
-    int unk;
-
-    //int unused[9];
 };
