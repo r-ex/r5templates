@@ -129,15 +129,15 @@ struct RpakAssetEntry
 	uint64 NameHash <format=hex, fgcolor=cLtGreen>;
 	uint64 Padding;
 
-	uint32 SubHeaderPageIndex;
-	uint32 SubHeaderPageOffset;
-	uint32 RawDataPageIndex;
-	uint32 RawDataPageOffset;
+	int SubHeaderPageIndex;
+	int SubHeaderPageOffset;
+	int RawDataPageIndex;
+	int RawDataPageOffset;
 
-	uint64 StarpakOffset <format=hex>;	
+	int64 StarpakOffset;	
 
     if(FILE_VERSION == 8)			
-	    uint64 OptionalStarpakOffset <format=hex>;		
+	    int64 OptionalStarpakOffset;		
 
 	uint16 HighestPageNum; // pageEnd
 	uint16 Un2;
@@ -602,8 +602,8 @@ struct TextureHeader
 	uint32_t DataSize;	// This is the total amount of image data across all banks
 	uint8_t Unknown2;
 	uint8_t OptMipLevelsStreamed;
-	uint8_t LayersCount;
-	uint8_t Unknown3;
+	uint8_t ArraySize;
+	uint8_t LayerCount;
 	uint8_t Unknown4;
 	uint8_t MipLevels;
 	uint8_t MipLevelsStreamed;
