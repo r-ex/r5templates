@@ -24,7 +24,7 @@ local const uint32 FILE_VERSION = ReadShort(4);
 PakHdr_t pakhdr <fgcolor=0x5268F7>;
 
 if(FILE_VERSION >= 7)
-    Assert(pakhdr.dcmpSize == FileSize(), "Invalid dcmpSize. Is your pak compressed?");
+    Assert(pakhdr.dcmpSize == FileSize() || pakhdr.EmbeddedStarpakSize != 0, "Invalid dcmpSize. Is your pak compressed?");
 
 local uint64 patchSizeToSkip = 0;
 local uint64 pageStart = 0;
@@ -56,7 +56,7 @@ RpakDescriptor Descriptors[pakhdr.DescriptorCount] <bgcolor=cLtGray, read=Str("{
 RpakAssetEntry AssetEntries[pakhdr.AssetEntryCount] <bgcolor=cBlack, read=Str("%s - %LX", this.Magic, this.NameHash), comment=Str("v%i sz: %i | head: {%i, %i}, cpu: {%i, %i}, unk2: %i", this.Version, this.SubHeaderSize, this.SubHeaderPageIndex, this.SubHeaderPageOffset, this.RawDataPageIndex, this.RawDataPageOffset, this.Un2)>;
 
 RpakDescriptor GuidDescriptors[pakhdr.GuidDescriptorCount];
-uint32 FileRelations[pakhdr.FileRelationCount] <hidden=true>;
+uint32 FileRelations[pakhdr.FileRelationCount] <hidden=false>;
 
 if(exists(pakhdr.UnkCount3) && pakhdr.UnkCount3 > 0)
     char unk_nonpaged[pakhdr.UnkCount3];
