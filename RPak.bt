@@ -58,6 +58,13 @@ RpakAssetEntry AssetEntries[pakhdr.AssetEntryCount] <bgcolor=cBlack, read=Str("%
 RpakDescriptor GuidDescriptors[pakhdr.GuidDescriptorCount];
 uint32 FileRelations[pakhdr.FileRelationCount] <hidden=false>;
 
+if(pakhdr.ExternalAssetCount)
+{
+    int referencedAssetOffset[pakhdr.ExternalAssetCount] <read=ReadString(startof(referencedAssetOffset[0]) + (pakhdr.ExternalAssetCount*4) + this)>;
+
+    char referencedAssetStrings[pakhdr.ExternalAssetSize];
+}
+
 if(exists(pakhdr.UnkCount3) && pakhdr.UnkCount3 > 0)
     char unk_nonpaged[pakhdr.UnkCount3];
 
@@ -109,8 +116,8 @@ for(i = 0; i < pakhdr.GuidDescriptorCount; ++i)
 
 string ReadTextureName(TextureHeader& th)
 {
-    if(th.NameIndex > 0 || th.NameOffset > 0)
-        return ReadString(pageoffsets[th.NameIndex] + th.NameOffset);
+    if(th.szdebugName.Index > 0 || th.szdebugName.Offset > 0)
+        return ReadString(pageoffsets[th.szdebugName.Index] + th.szdebugName.Offset);
     else
         return Str("0x%LX", th.NameHash);
 };

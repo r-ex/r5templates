@@ -72,8 +72,8 @@ struct PakHdr_t
 	uint32 GuidDescriptorCount;
 	uint32 FileRelationCount;
 
-    uint32 UnkCount;
-    uint32 UnkCount2;
+    uint32 ExternalAssetCount;
+    uint32 ExternalAssetSize;
 
     if(FILE_VERSION == 6)
         uint32 what;
@@ -588,27 +588,34 @@ struct ShaderSetHeader {
 //
 struct TextureHeader
 {
-	uint64_t NameHash <format=hex>;
-	uint32_t NameIndex;
-	uint32_t NameOffset;
+	uint64_t Guid <format=hex>;
+	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
 
-	uint16_t Width;
-	uint16_t Height;
+	int16 width;
+	int16 height;
 
+    // possible int16
 	uint8_t Un1;
 	uint8_t Un2;
-	uint16_t Format;	// Maps to a DXGI format
 
-	uint32_t DataSize;	// This is the total amount of image data across all banks
-	uint8_t Unknown2;
-	uint8_t OptMipLevelsStreamed;
-	uint8_t ArraySize;
-	uint8_t LayerCount;
-	uint8_t Unknown4;
-	uint8_t MipLevels;
-	uint8_t MipLevelsStreamed;
+    uint16_t format;  // Maps to a DXGI format
 
-	uint8_t UnknownPad[0x15];
+	uint32_t dataSize;	// This is the total amount of image data across all banks
+
+	uint8_t compressionType; // 8 PS4, 9 Switch
+
+	uint8_t optStreamedMipCount; // r5 only
+
+	uint8_t arraySize;
+	uint8_t layerCount;
+
+	uint8_t mipFlags;
+	uint8_t permanentMipCount;
+	uint8_t streamedMipCount;
+
+    byte unk[13]; // mipmap related, used bytes is always total mip count minus one, not present if no mipmaps (see mip count - 1)
+
+    int64 numPixels; // reserved, set on load.
 };
 
 struct TextureHeaderV9
@@ -973,7 +980,7 @@ struct SettingsAssetHeader
 struct ASeqHeaderV7
 {
 	RPakPtr data; // pointer to raw rseq.
-	RPakPtr szname; // pointer to debug name, placed before raw rseq normally.
+	RPakPtr szname <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
 	RPakPtr modelGuid;
@@ -991,7 +998,7 @@ struct ASeqHeaderV7
 struct ASeqHeaderV71
 {
     RPakPtr data; // pointer to raw rseq.
-    RPakPtr szname; // pointer to debug name, placed before raw rseq normally.
+    RPakPtr szname <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
 	RPakPtr modelGuid;
@@ -1013,7 +1020,7 @@ struct ASeqHeaderV71
 struct ASeqHeaderV10
 {
 	RPakPtr data; // pointer to raw rseq.
-	RPakPtr szname; // pointer to debug name, placed before raw rseq normally.
+	RPakPtr szname <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
     uint64_t Unknown; // possible pointer, guid, or reserved space.
 
