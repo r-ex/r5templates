@@ -266,79 +266,78 @@ struct UnknownMaterialSectionV15
 
 struct UnknownMaterialSectionV12
 {
-	uint32_t UnkRenderLighting;
-	uint32_t UnkRenderAliasing;
-	uint32_t UnkRenderDoF;
-	uint32_t UnkRenderUnknown;
+	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
+	// they seem to affect various rendering filters, said filters might actually be the used shaders.
+	// the duplicate one is likely for streamed textures.
+	uint32_t unkrenderlighting;
+	uint32_t unkrenderaliasing;
+	uint32_t unkrenderDoF;
+	uint32_t unkrenderunknown;
 
-	uint32_t m_UnknownFlags; // this changes sometimes.
-	uint16_t m_VisibilityFlags; // different render settings, such as opacity and transparency.
-	uint16_t m_FaceDrawingFlags; // how the face is drawn, culling, wireframe, etc.
+	uint32_t unkflags; // this changes sometimes.
+	uint16_t visibilityflags; // different render settings, such as opacity and transparency.
+	uint16_t faceflags; // how the face is drawn, culling, wireframe, etc.
 
-	uint64_t m_Padding;
+	uint64_t reserved;
 };
 
-struct MaterialHeaderTF
+struct MaterialHeaderV12
 {
-	uint64_t VTablePadding <comment="Reserved bytes used for storing the CMaterialGlue vtable's pointer">;
-	uint64_t Padding; // all null bytes
-	uint64_t AssetGUID <format=hex>; // for some reason this is the material's guid
+	uint64_t reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t padding[8]; // unused
 
-	RPakPtr Name; // asset path
-	RPakPtr SurfaceName; // surface name (as defined in surfaceproperties.rson)
-	uint64_t Padding;
+	uint64_t guid; // guid of this material asset
 
+	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
+	RPakPtr szsurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr szsurfaceProp2; // pointer to surfaceprop2 
 
-	uint64_t GUIDRefs[3]; // default asset guids
-    uint64_t ColpassGUID <format=hex>; // may be blank if this is the colpass asset
+	// IDX 1: DepthShadow
+	// IDX 2: DepthPrepass
+	// IDX 3: DepthVSM
+	// IDX 4: ColPass
 
-	UnknownMaterialSectionV12 UnkSection[2];
+	uint64_t guidRefs[4]; // Required to have proper textures.
 
-	uint64_t ShaderSetGUID <format=hex>;
+	// these blocks relate to different render filters and flags. still not well understood.
+	UnknownMaterialSectionV12 unksections[2];
 
-	RPakPtr TextureGUIDs; // texture guids
-	RPakPtr TextureGUIDs2;
+	uint64_t shadersetGuid; // guid of the shaderset asset that this material uses
 
-    int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
+	RPakPtr texturesHandles; // TextureGUID Map
 
-	uint32_t m_Flags; // see ImageFlags in the apex struct.
-	int16 m_Unk1; // might be "m_Unknown2"
+	// both should be reserved - used to store the handles for any textures that have streaming mip levels and the number of textures that have streamed mips
+	RPakPtr streamingTextureHandles;
+	uint16_t streamingTextureCount; // Number of textures with streamed mip levels.
 
-	uint64_t m_Padding1; // haven't observed anything here, however I really doubt this is actually padding.
+	uint32_t flags; // see ImageFlags in the apex struct.
+	uint16_t unknown2; // name carried over from apex struct.
+
+	uint64_t reserved; // nothing is ever placed here (as I've seen so far), probably reserved for stuff on load.
 
 	// seems to be 0xFBA63181 for loadscreens
-	//uint32_t m_Unknown3; // name carried over from apex struct.
+	uint32_t unknown3; // name carried over from apex struct.
 
-    int16 cool[2];
+	uint32_t unknown4; // name carried over from apex struct.
 
-	uint32_t m_Unk2; // this might actually be "m_Unknown4"
-
-	uint32_t m_Flags2;
+	uint32_t flags2;
 	uint32_t something2; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
 
-    uint16_t Width;
-    uint16_t Height;
-
-    uint32 unk;
-
-};
-
-struct MaterialCPUHeader
-{
-	RPakPtr  data; // points to the rest of the cpu data. maybe for colour?
-	uint32_t size;
-	uint32_t version; // every unknown is now either datasize, version, or flags
+	uint16_t width;
+	uint16_t height;
+	uint32_t unknown1; // might be padding but could also be something else such as "m_Unknown1"?.
 };
 
 struct MaterialHeaderV15
 {
-	uint64_t m_VtblReserved; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t m_Padding[0x8]; // Un-used.
-	uint64_t m_nGUID; // guid of this material asset
+	uint64_t reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
+	uint8_t padding[8]; // unused
 
-	RPakPtr m_pszName; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr m_pszSurfaceProp2; // pointer to surfaceprop2 
+	uint64_t guid; // guid of this material asset
+
+	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
+	RPakPtr szsurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr szsurfaceProp2; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -346,13 +345,15 @@ struct MaterialHeaderV15
 	// IDX 4: DepthShadowTight
 	// IDX 5: ColPass
 
-	uint64_t m_GUIDRefs[5]; // Required to have proper textures.
-	uint64_t m_pShaderSet; // guid of the shaderset asset that this material uses
+	uint64_t guidRefs[5]; // Required to have proper textures.
+	uint64_t shadersetGuid; // guid of the shaderset asset that this material uses
 
-	RPakPtr m_pTextureHandle; // TextureGUID Map
-	RPakPtr m_pStreamingTextureHandles; // Streamable TextureGUID Map
-	
-	int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
+	RPakPtr texturesHandles; // TextureGUID Map
+
+	// both should be reserved - used to store the handles for any textures that have streaming mip levels and the number of textures that have streamed mips
+	RPakPtr streamingTextureHandles;
+	uint16_t streamingTextureCount; // Number of textures with streamed mip levels.
+
 	int16 m_nWidth;
 	int16 m_nHeight;
 	int16 m_Unknown1;
@@ -377,7 +378,7 @@ struct MaterialHeaderV15
 
 	uint32_t unk;
 
-    uint64 txanhash;
+    uint64 txanGuid;
 };
 
 // header size unchanged all the way until v20, does not mean vars have not changed within
@@ -430,7 +431,7 @@ struct MaterialHeaderV16
 
 	uint32_t unk;
 
-    uint64 txanhash;
+    uint64 txanGuid;
 
     uint32 unk1_v16[6];
 };
@@ -482,13 +483,20 @@ struct MaterialHeaderV20
 	uint8_t bytef2; // used '4' and '8' observed
 	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
 
-	uint32_t unk; // seen this as '1'
+	uint32_t unk; // seen this as '1' and '3'
 
-    uint64 txanhash;
+    uint64 txanGuid;
 
     uint32 unk1_v16[5];
 
     float unkfloat1_v20;
+};
+
+struct MaterialCPUHeader
+{
+	RPakPtr  data; // points to the rest of the cpu data. maybe for colour?
+	uint32_t size;
+	uint32_t version; // every unknown is now either datasize, version, or flags
 };
 
 struct uvTransformMatrix
@@ -588,15 +596,16 @@ struct ShaderSetHeader {
 //
 struct TextureHeader
 {
-	uint64_t Guid <format=hex>;
+	uint64_t guid <format=hex>;
 	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
 
-	int16 width;
-	int16 height;
+	uint16_t width <fgcolor=cPurple>;
+	uint16_t height <fgcolor=cYellow>;
 
     // possible int16
-	uint8_t Un1;
-	uint8_t Un2;
+    uint16_t Un;
+	//uint8_t Un1;
+	//uint8_t Un2;
 
     uint16_t format;  // Maps to a DXGI format
 
@@ -609,7 +618,7 @@ struct TextureHeader
 	uint8_t arraySize;
 	uint8_t layerCount;
 
-	uint8_t mipFlags;
+	uint8_t mipFlags; // 0x1 invert mips, 0x2 exists but unk
 	uint8_t permanentMipCount;
 	uint8_t streamedMipCount;
 
@@ -620,21 +629,30 @@ struct TextureHeader
 
 struct TextureHeaderV9
 {
-	RPakPtr debugName<fgcolor=cLtRed>;
+	RPakPtr szdebugName <fgcolor=cLtRed>;
+
 	uint16_t format;
+
 	uint16_t width <fgcolor=cPurple>;
 	uint16_t height <fgcolor=cYellow>;
-	uint16_t un1;
+
+	uint16_t Un;
+
 	uint16_t arraySize;
+
+    uint16_t un2; // likely layerCount
+
 	uint32_t dataSize_deprecated;
+
 	uint8_t permanentMipCount;
 	uint8_t streamedMipCount;
 	uint8_t optStreamedMipCount;
-	uint8_t un2;
-	uint8_t un3;
-	uint8_t un4;
-	uint8_t un5;
-	uint8_t UnknownPad[27];
+
+	uint8_t un3; // not related to mips, will be present even where there's one mip
+	
+    int16 unk[10]; // weird mip bytes for unstreamed
+
+    byte unk1[8]; // weird mip level bytes for streamed stuff
 };
 
 struct UIIAFlags
@@ -1087,4 +1105,13 @@ struct PtchHeader
 	RPakPtr pPakNames;
 
 	RPakPtr pPakPatchNums;
+};
+
+// oh god oh man oh god
+struct MapHeader
+{
+    char unk[104];
+
+    if(AssetEntries[i].Version == 3)
+        char unk_v3[16];
 };

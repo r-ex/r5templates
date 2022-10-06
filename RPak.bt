@@ -56,13 +56,34 @@ RpakDescriptor Descriptors[pakhdr.DescriptorCount] <bgcolor=cLtGray, read=Str("{
 RpakAssetEntry AssetEntries[pakhdr.AssetEntryCount] <bgcolor=cBlack, read=Str("%s - %LX", this.Magic, this.NameHash), comment=Str("v%i sz: %i | head: {%i, %i}, cpu: {%i, %i}, unk2: %i", this.Version, this.SubHeaderSize, this.SubHeaderPageIndex, this.SubHeaderPageOffset, this.RawDataPageIndex, this.RawDataPageOffset, this.Un2)>;
 
 RpakDescriptor GuidDescriptors[pakhdr.GuidDescriptorCount];
-uint32 FileRelations[pakhdr.FileRelationCount] <hidden=false>;
+
+
+local int fileRelationStart = FTell();
+local int d;
+
+if(pakhdr.FileRelationCount)
+{
+    struct
+    {
+        for(d = 0; d < pakhdr.AssetEntryCount; d++)
+        {
+            if(AssetEntries[d].RelationsCount)
+            {
+                FSeek(fileRelationStart + (AssetEntries[d].RelationsStartIndex * 4));                
+
+                struct
+                {
+                    int relationIdx[AssetEntries[d].RelationsCount] <read=Str("%s - %LX", AssetEntries[this].Magic, AssetEntries[this].NameHash), comment=Str("Asset Entry Index: %i", this)>;
+                } FileRelation; // really wish I could name the asset type and hash here but haha 010 and loops funny.
+            }
+        }
+    } FileRelations <fgcolor=cPurple>;
+}
 
 if(pakhdr.ExternalAssetCount)
 {
-    int referencedAssetOffset[pakhdr.ExternalAssetCount] <read=ReadString(startof(referencedAssetOffset[0]) + (pakhdr.ExternalAssetCount*4) + this)>;
-
-    char referencedAssetStrings[pakhdr.ExternalAssetSize];
+    int referencedAssetOffset[pakhdr.ExternalAssetCount] <bgcolor=cLtGreen, read=ReadString(startof(referencedAssetOffset[0]) + (pakhdr.ExternalAssetCount*4) + this)>;
+    char referencedAssetStrings[pakhdr.ExternalAssetSize] <fgcolor=cLtGreen>;
 }
 
 if(exists(pakhdr.UnkCount3) && pakhdr.UnkCount3 > 0)
@@ -119,7 +140,7 @@ string ReadTextureName(TextureHeader& th)
     if(th.szdebugName.Index > 0 || th.szdebugName.Offset > 0)
         return ReadString(pageoffsets[th.szdebugName.Index] + th.szdebugName.Offset);
     else
-        return Str("0x%LX", th.NameHash);
+        return Str("0x%LX", th.guid);
 };
 
 string ReadSubtHashEntry(SubtHashEntry& sh, SubtitleHeader& subt)
@@ -131,6 +152,8 @@ string ReadSubtHashEntry(SubtHashEntry& sh, SubtitleHeader& subt)
 };
 local uint64 j = 0;
 local int numbones = 0;
+local int numtextures = 0;
+
 for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 {
     GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
@@ -150,6 +173,10 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         {
             TextureHeader th <bgcolor=cLtRed, read=ReadTextureName>;
         }
+    }
+    else if( AssetEntries[i].Magic == "rmap" )
+    {
+       MapHeader maph;
     }
     /*else if( AssetEntries[i].Magic == "rson" )
     {
@@ -207,7 +234,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             };
         }
     }*/
-    else if( AssetEntries[i].Magic == "uimg")
+    /*else if( AssetEntries[i].Magic == "uimg")
     {
         struct UIHashEntry
         {
@@ -252,14 +279,14 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         } uvsgroup;
 
         //UIImageUVGroup uvsgroup;
-    }
-    /*else if( AssetEntries[i].Magic == "uiia")
+    }*/
+    else if( AssetEntries[i].Magic == "uiia")
     {
         UIIAHeader uh<hidden=false>;
 
         GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
         RUIImage ruiimage <read=ReadString(pageoffsets[this.NameIndex] + this.NameOffset)>;
-    }*/
+    }
     else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version >= 16)
     {
         MaterialHeaderV16 mh <read=ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset), hidden=false>;
@@ -272,8 +299,24 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     }
     else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version == 15)
     {
-        MaterialHeaderV15 mh <read=ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset), hidden=false>;
-        
+        MaterialHeaderV15 mh <read=ReadString(pageoffsets[this.szdebugName.Index] + this.szdebugName.Offset), hidden=false>;
+
+        numtextures = (mh.streamingTextureHandles.Offset - mh.texturesHandles.Offset) / 8;
+
+        FSeek(pageoffsets[mh.texturesHandles.Index] + mh.texturesHandles.Offset);
+
+        struct
+        {
+            uint64 guid[numtextures];
+            uint64 streamedGuid[numtextures];
+            
+            string surfaceprop <fgcolor=cLtRed>;
+
+            if(mh.szsurfaceProp2.Index || mh.szsurfaceProp2.Offset)
+                string surfaceprop2 <fgcolor=cLtRed>;
+
+        } materialdata;
+
         FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
         MaterialCPUHeader matlcpuheader;
 
@@ -282,20 +325,39 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     }
     else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version == 12)
     {
-        MaterialHeaderTF mh <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset), hidden=false>;
+        MaterialHeaderV12 mh <read=ReadString(pageoffsets[this.szdebugName.Index] + this.szdebugName.Offset), hidden=false>;
+
+        numtextures = (mh.streamingTextureHandles.Offset - mh.texturesHandles.Offset) / 8;
+
+        FSeek(pageoffsets[mh.texturesHandles.Index] + mh.texturesHandles.Offset);
+
+        struct
+        {
+            uint64 guid[numtextures];
+            uint64 streamedGuid[numtextures];
+            
+            string surfaceprop <fgcolor=cLtRed>;
+
+            if(mh.szsurfaceProp2.Index || mh.szsurfaceProp2.Offset)
+                string surfaceprop2 <fgcolor=cLtRed>;
+
+        } materialdata;
 
         FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
         MaterialCPUHeader matlcpuheader;
 
         FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
         MatlCPUData_V12 cpudata;
+
+        
+
     }
     /*else if( AssetEntries[i].Magic == "shds" )
     {
-        //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        //ShaderSetHeader ssh;
-    }
-    else if( AssetEntries[i].Magic == "shdr" )
+        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        ShaderSetHeader ssh;
+    }*/
+    /*else if( AssetEntries[i].Magic == "shdr" )
     {
         //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
         //ShaderHeader shdr;
@@ -307,7 +369,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 
         char data;
     }*/
-    else if( AssetEntries[i].Magic == "ui\0\0" )
+    /*else if( AssetEntries[i].Magic == "ui\0\0" )
     {
         RUIHeader g <read=ReadString(pageoffsets[this.name.Index] + this.name.Offset), comment=Str("ac: %i, args: %i", this.argClusterCount, this.argCount), hidden=false>;
 
@@ -357,7 +419,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             } unk10data;
         }
         
-    }
+    }*/
     /*else if( AssetEntries[i].Magic == "txls" )
     {
         //TextureListHeader_t tlh;
@@ -404,7 +466,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         GTPTR(anir.keys[0]);
         char fr;
     }*/
-    else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
+    /*else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
     {
         ASeqHeaderV10 anhdr <read=ReadString(pageoffsets[this.szname.Index] + this.szname.Offset)>;
 
@@ -436,7 +498,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         {
             #include "./RSEQ/rseq_v7.bt" // this is just way more compact and I have all the math done     
         } an;
-    }
+    }*/
     /*else if( AssetEntries[i].Magic == "mt4a" )
     {
         MaterialForAspect mt4a;
