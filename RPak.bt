@@ -37,8 +37,8 @@ if(FILE_VERSION >= 7)
         RpakPatchCompressPair PatchCompressPairs[pakhdr.PatchIndex] <fgcolor=cLtGreen>;
         uint16 PatchIndicesToFile[pakhdr.PatchIndex] <bgcolor=cDkYellow>;
     
-        patchSizeToSkip = TempPatchHeader.PatchDataSize;
-        pageStart = TempPatchHeader.PatchSegmentIndex;
+        patchSizeToSkip = TempPatchHeader.dataSize;
+        pageStart = TempPatchHeader.patchPageIdx;
     
         Printf("WARNING: Patch rpaks are not currently supported\n");
     }
