@@ -55,11 +55,33 @@ RpakPageInfo Pages[pakhdr.PageCount] <bgcolor=cLtGreen, read=Str("sz %08x | vseg
 RpakDescriptor Descriptors[pakhdr.DescriptorCount] <bgcolor=cLtGray, read=Str("{page: %i ofs: %i}", this.Index, this.Offset)>;
 RpakAssetEntry AssetEntries[pakhdr.AssetEntryCount] <bgcolor=cBlack, read=Str("%s - %LX", this.Magic, this.NameHash), comment=Str("v%i sz: %i | head: {%i, %i}, cpu: {%i, %i}, unk2: %i", this.Version, this.SubHeaderSize, this.SubHeaderPageIndex, this.SubHeaderPageOffset, this.RawDataPageIndex, this.RawDataPageOffset, this.Un2)>;
 
-RpakDescriptor GuidDescriptors[pakhdr.GuidDescriptorCount];
+local int guidDescriptorStart = FTell();
+local int d;
+local int guidDescClumpCount;
+//RpakDescriptor GuidDescriptors[pakhdr.GuidDescriptorCount];
 
+if(pakhdr.GuidDescriptorCount)
+{
+    struct
+    {
+        for(d = 0; d < pakhdr.AssetEntryCount; d++)
+        {
+            if(AssetEntries[d].UsesCount)
+            {
+                FSeek(guidDescriptorStart + (AssetEntries[d].UsesStartIndex * sizeof(RpakDescriptor)));                
+
+                guidDescClumpCount++;
+
+                struct
+                {
+                    RpakDescriptor GuidDescriptor[AssetEntries[d].UsesCount];
+                } AssetGuidDescriptorGroup; // really wish I could name the asset type and hash here but haha 010 and loops funny.
+            }
+        }
+    } GuidDescriptors <fgcolor=cLtYellow>;
+}
 
 local int fileRelationStart = FTell();
-local int d;
 
 if(pakhdr.FileRelationCount)
 {
@@ -127,12 +149,20 @@ for(i = 0; i < pakhdr.DescriptorCount; ++i)
     RpakDescPointer desc <hidden=true>;
 }
 
-// points to every instance of an asset guid reference
-for(i = 0; i < pakhdr.GuidDescriptorCount; ++i)
-{
-    FSeek(pageoffsets[GuidDescriptors[i].Index] + GuidDescriptors[i].Offset);
+local int guidDescCount;
 
-    RPakGuidRef guid <hidden=true>;
+// points to every instance of an asset guid reference
+for(i = 0; i < guidDescClumpCount; ++i)
+{
+    
+    guidDescCount = sizeof(GuidDescriptors.AssetGuidDescriptorGroup[i]) / sizeof(RpakDescriptor);
+
+    for(d = 0; d < guidDescCount; d++)
+    {
+        FSeek(pageoffsets[GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Index] + GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Offset);
+
+        RPakGuidRef guid <hidden=true>;
+    }
 }
 
 string ReadTextureName(TextureHeader& th)
