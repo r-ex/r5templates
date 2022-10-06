@@ -74,8 +74,9 @@ if(pakhdr.GuidDescriptorCount)
 
                 struct
                 {
+                    local int assetIdx = d;
                     RpakDescriptor GuidDescriptor[AssetEntries[d].UsesCount];
-                } AssetGuidDescriptorGroup; // really wish I could name the asset type and hash here but haha 010 and loops funny.
+                } AssetGuidDescriptorGroup <read=Str("%s - %LX", AssetEntries[this.assetIdx].Magic, AssetEntries[this.assetIdx].NameHash)>; // really wish I could name the asset type and hash here but haha 010 and loops funny.
             }
         }
     } GuidDescriptors <fgcolor=cLtYellow>;
@@ -95,8 +96,9 @@ if(pakhdr.FileRelationCount)
 
                 struct
                 {
+                    local int assetIdx = d;
                     int relationIdx[AssetEntries[d].RelationsCount] <read=Str("%s - %LX", AssetEntries[this].Magic, AssetEntries[this].NameHash), comment=Str("Asset Entry Index: %i", this)>;
-                } FileRelation; // really wish I could name the asset type and hash here but haha 010 and loops funny.
+                } FileRelation <read=Str("%s - %LX", AssetEntries[this.assetIdx].Magic, AssetEntries[this.assetIdx].NameHash)>;
             }
         }
     } FileRelations <fgcolor=cPurple>;
