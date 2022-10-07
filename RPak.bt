@@ -143,13 +143,29 @@ for(i = pageStart; i < pakhdr.PageCount; ++i)
     } data <read=ReadSegmentFlags(VirtualSegments[Pages[this.idx].segIdx].flags), comment=Str("%i", this.idx)>;
 
 }
-// points to every instance of a "page idx, page offset" pointer within page data
-for(i = 0; i < pakhdr.DescriptorCount; ++i)
-{
-    FSeek(pageoffsets[Descriptors[i].Index] + Descriptors[i].Offset);
 
-    RpakDescPointer desc <hidden=true>;
+if(pakhdr.DescriptorCount < 200000)
+{
+    // points to every instance of a "page idx, page offset" pointer within page data
+    for(i = 0; i < pakhdr.DescriptorCount; ++i)
+    {
+        FSeek(pageoffsets[Descriptors[i].Index] + Descriptors[i].Offset);
+    
+        RpakDescPointer desc <hidden=true>;
+    }
 }
+else
+{
+    // points to every instance of a "page idx, page offset" pointer within page data
+    for(i = 0; i < 50000; ++i)
+    {
+        FSeek(pageoffsets[Descriptors[i].Index] + Descriptors[i].Offset);
+    
+        RpakDescPointer desc <hidden=true>;
+    }
+
+}
+
 
 local int guidDescCount;
 
@@ -192,7 +208,19 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 
     if( AssetEntries[i].Magic == "efct" )
     {
-        //char efct;
+
+        struct {
+            
+            // literally cry about it
+            EffectHeader efct <read=ReadString(pageoffsets[ReadInt(pageoffsets[this.data.Index] + this.data.Offset)] + ReadInt(pageoffsets[this.data.Index] + this.data.Offset+4))>;
+
+            if(efct.data.Index != 0 || efct.data.Offset != 0)
+            {
+                GTPTR(efct.data);
+    
+                EffectData data;
+            }
+        } effect_asset;
     }
     else if( AssetEntries[i].Magic == "txtr" )
     {
@@ -531,7 +559,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             #include "./RSEQ/rseq_v7.bt" // this is just way more compact and I have all the math done     
         } an;
     }*/
-    /*else if( AssetEntries[i].Magic == "mt4a" )
+    else if( AssetEntries[i].Magic == "mt4a" )
     {
         MaterialForAspect mt4a;
     } else {
@@ -539,5 +567,5 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             local int idx = i;
             char data[AssetEntries[i].SubHeaderSize];
         } header_data <name=Str("header_%s", AssetEntries[this.idx].Magic), read=Str("size: %i, guid: %016LX", sizeof(this.data), AssetEntries[this.idx].NameHash), comment=Str("version: %i", AssetEntries[this.idx].Version)>;
-    };*/
+    };
 }

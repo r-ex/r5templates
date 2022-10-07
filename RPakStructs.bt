@@ -1115,3 +1115,20 @@ struct MapHeader
     if(AssetEntries[i].Version == 3)
         char unk_v3[16];
 };
+
+struct EffectHeader
+{
+	RPakPtr data;
+	int unk2;
+	int unk3;
+};
+
+struct EffectData
+{
+	RPakPtr pcfName;
+	RPakPtr EffectName; // Double ptr to effect name
+	RPakPtr unk2;
+	RPakPtr ParticleSystemOperator; // Double ptr to pso name
+	RPakPtr unk3;
+	RPakPtr unk4;
+};
