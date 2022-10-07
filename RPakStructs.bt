@@ -573,6 +573,17 @@ struct MatlCPUData_V12
 //
 // SHADERS
 //
+struct ShaderHeaderV8
+{
+	RPakPtr name <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	int unkcount;
+    int unkcount1;
+
+	RPakPtr unkdata;
+    RPakPtr unkdata1;
+};
+
 struct ShaderSetHeader {
 	uint8_t Unknown1[0x18];
 	uint16_t Count1;
@@ -590,6 +601,34 @@ struct ShaderSetHeader {
 	uint64_t PixelShaderHash;
 };
 
+struct ShaderSetHeaderV8 {
+
+	uint64_t reservedVtbl;
+	
+    RPakPtr name <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	uint8_t Unknown1[0x8];
+
+	uint16_t Count1;
+
+	uint16_t textureInputCount;
+
+	uint16_t Count3;
+	uint8_t Byte1;
+	uint8_t Byte2;
+
+	uint8_t Unknown2[0x8];
+    
+    uint64_t unk[4];
+
+    /*uint64_t domainShaderGuid
+	uint64_t hullShaderGuid;
+	uint64_t computeShaderGuid;
+	uint64_t geometryShaderGuid;*/
+	uint64_t vextexShaderGuid;
+	uint64_t pixelShaderGuid;
+
+};
 
 //
 // TEXTURES 
@@ -769,6 +808,124 @@ struct UIImageUV
 //
 // MODELS 
 //
+/*struct ModelHeader
+{
+	// IDST data
+	// .mdl
+	RPakPtr pRMDL;
+	uint64_t Padding = 0;
+
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr pName;
+	uint64_t Padding2 = 0;
+
+	// .phy
+	RPakPtr pPhyData;
+	uint64_t Padding3 = 0;
+
+	// preload cache data for static props
+	RPakPtr pStaticPropVtxCache;
+
+	// pointer to data for the model's arig guid(s?)
+	RPakPtr pAnimRigs;
+
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t animRigCount = 0;
+
+	// size of the data kept in starpak
+	uint32_t unkDataSize = 0;
+	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
+
+	uint64_t Padding6 = 0;
+
+	// number of anim sequences directly associated with this model
+	uint32_t animSeqCount = 0;
+	RPakPtr pAnimSeqs;
+
+	uint64_t Padding7 = 0;
+	uint64_t Padding8 = 0;
+	uint64_t Padding9 = 0;
+};*/
+
+struct ModelHeaderV8
+{
+	// IDST data
+	RPakPtr pRMDL <comment=".rmdl">;
+
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	uint64_t unk;
+
+	// charms do not use this, but goblin_dropship and weapons do
+	RPakPtr pPHY <comment=".phy">;
+
+	RPakPtr pModelData <comment=".vtx and .vvd. preload data for static props only">;
+
+	// pointer to data for the model's arig guid(s?)
+	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
+
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t rrigCount;
+
+	// size of the data kept in starpak
+	uint32_t unkDataSize;
+	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
+
+	// number of anim sequences directly associated with this model
+	uint32_t rseqCount;
+	RPakPtr pRSEQ;
+
+    uint64_t unk1;
+};
+
+struct ModelHeaderV9
+{
+	// IDST data
+	RPakPtr pRMDL <comment=".rmdl">;
+
+    uint64_t unk;
+
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	uint64_t unk1;
+
+	// charms do not use this, but goblin_dropship and weapons do
+	RPakPtr pPHY <comment=".phy">;
+
+    uint64_t unk2;
+
+	RPakPtr pModelData <comment=".vtx and .vvd combined. preload data for static props only">;
+
+	// pointer to data for the model's arig guid(s?)
+	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
+
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t rrigCount;
+
+	// size of the data kept in starpak
+	uint32_t unkDataSize;
+	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
+
+	
+
+    uint64_t unk3;
+
+    uint64_t unk4;
+	uint64_t unk5;
+
+    // number of anim sequences directly associated with this model
+	uint32_t rseqCount;
+	RPakPtr pRSEQ;
+
+	uint64_t unk6;
+
+};
+
 struct ModelHeader
 {
 	// IDST data
@@ -805,6 +962,195 @@ struct ModelHeader
 	uint64_t Padding8;
 	uint64_t Padding9;
 };
+
+struct studiohdr_t
+{
+	int id; // Model format ID, such as "IDST" (0x49 0x44 0x53 0x54)
+	int version; // Format version number, such as 48 (0x30,0x00,0x00,0x00)
+	int checksum; // This has to be the same in the phy and vtx files to load!
+	int sznameindex; // This has been moved from studiohdr2 to the front of the main header.
+	char name[64]; // The internal name of the model, padding with null bytes.
+	                // Typically "my_model.mdl" will have an internal name of "my_model"
+	int length; // Data size of MDL file in bytes.
+ 
+	Vector3 eyeposition;	// ideal eye position
+
+	Vector3 illumposition;	// illumination center
+	
+	Vector3 hull_min;		// ideal movement hull size
+	Vector3 hull_max;			
+
+	Vector3 view_bbmin;		// clipping bounding box
+	Vector3 view_bbmax;		
+ 
+	int flags;
+  
+	int numbones; // bones
+	int boneindex;
+ 
+	int numbonecontrollers; // bone controllers
+	int bonecontrollerindex;
+ 
+	int numhitboxsets;
+	int hitboxsetindex;
+ 
+    // unused now
+	int numlocalanim; // animations/poses
+	int localanimindex; // animation descriptions
+ 
+	int numlocalseq; // sequences
+	int	localseqindex;
+ 
+	int activitylistversion; // initialization flag - have the sequences been indexed?
+ 
+	// mstudiotexture_t
+	// short rpak path
+	// raw textures
+    int materialtypesindex;
+	int numtextures; // the material limit exceeds 128, probably 256.
+	int textureindex;
+ 
+	// this should always only be one, unless using vmts.
+	// raw textures search paths
+	int numcdtextures;
+	int cdtextureindex;
+ 
+	// replaceable textures tables
+	int numskinref;
+	int numskinfamilies;
+	int skinindex;
+ 
+	int numbodyparts;		
+	int bodypartindex;
+ 
+	int numlocalattachments;
+	int localattachmentindex;
+ 
+	int numlocalnodes;
+	int localnodeindex;
+	int localnodenameindex;
+ 
+	int numunknodes;
+	int unknodexindex;
+ 
+	int meshindex; // offset to model meshes
+
+	int numflexcontrollers;
+	int flexcontrollerindex;
+ 
+	int numflexrules;
+	int flexruleindex;
+ 
+	int numikchains;
+	int ikchainindex;
+
+	// this is rui meshes
+	int numruimeshes;
+	int ruimeshindex;
+ 
+	int numlocalposeparameters;
+	int localposeparamindex;
+ 
+	int surfacepropindex;
+ 
+	int keyvalueindex;
+	int keyvaluesize;
+ 
+	int numlocalikautoplaylocks;
+	int localikautoplaylockindex;
+ 
+	float mass;
+	int contents;
+	
+	// unused for packed models
+	int numincludemodels;
+	int includemodelindex;
+	
+	uint32 virtualModel;
+
+	int bonetablebynameindex;
+	
+	// if STUDIOHDR_FLAGS_CONSTANT_DIRECTIONAL_LIGHT_DOT is set,
+	// this value is used to calculate directional components of lighting 
+	// on static props
+	byte constdirectionallightdot;
+
+	// set during load of mdl data to track *desired* lod configuration (not actual)
+	// the *actual* clamped root lod is found in studiohwdata
+	// this is stored here as a global store to ensure the staged loading matches the rendering
+	byte rootLOD;
+	
+	// set in the mdl data to specify that lod configuration should only allow first numAllowRootLODs
+	// to be set as root LOD:
+	//	numAllowedRootLODs = 0	means no restriction, any lod can be set as root lod.
+	//	numAllowedRootLODs = N	means that lod0 - lod(N-1) can be set as root lod, but not lodN or lower.
+	byte numAllowedRootLODs;
+
+	byte unused;
+
+	float fadedistance;
+	
+	float gathersize; // what. from r5r struct
+
+    int numunk_v54_early;
+    int unkindex_v54_early;
+
+	float flVertAnimFixedPointScale; // to be verified
+    int surfacepropLookup; // this index must be cached by the loader, not saved in the file
+
+	// this is in all shipped models, probably part of their asset bakery. it should be 0x2CC.
+	int mayaindex; // doesn't actually need to be written pretty sure, only four bytes when not present.
+
+	int numsrcbonetransform;
+	int srcbonetransformindex;
+
+	int	illumpositionattachmentindex;
+	
+	int linearboneindex;
+
+	int m_nBoneFlexDriverCount; // unsure if that's what it is in apex
+	int m_nBoneFlexDriverIndex;
+	
+    int unkindexflex;
+
+	int unk1_v54[6];
+
+	// always "" or "Titan"
+    int unkstringindex <read=ReadString(mdlHeader.unkstringindex)>;
+
+	// this is now used for combined files in rpak, vtx, vvd, and vvc are all combined while vphy is separate.
+	// the indexes are added to the offset in the rpak mdl_ header.
+	// vphy isn't vphy, looks like a heavily modified vphy.
+	int vtxindex; // VTX
+	int vvdindex; // VVD / IDSV
+	int vvcindex; // VVC / IDCV 
+	int vphyindex; // VPHY / IVPS
+
+	int vtxsize;
+	int vvdsize;
+	int vvcsize;
+	int vphysize; // still used in models using vg
+
+	// unk2_v54[3] is the chunk after following unkindex2's chunk
+	int unk2_v54[3]; // the same four unks in v53 I think, the first index being unused now probably
+
+    int unkindex3; // index to chunk after string block
+
+    // Per Tri Collision AABB size
+    Vector3 mins;
+    Vector3 maxs; // seem to be the same as hull size
+
+    int unk3_v54[3];
+
+	int unkindex4; // chunk before unkindex3 sometimes
+
+	int unk4_v54[3]; // same as unk3_v54_v121
+
+    //int vgindex; // 0tVG
+    //int unksize; // might be offset
+    //int unksize1; // might be offset
+};
+
 
 struct UIFontData
 {
@@ -1081,8 +1427,48 @@ struct SubtHashEntry {
 // 816 bytes...
 struct AnimRecordingHeader
 {
+    // pose param names normally
     RPakPtr keys[15] <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+    // pose param values normally
     Vector2 values[15];
+    
+    RPakPtr anims[48] <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+    // actions or events?
+    RPakPtr unkstring[16] <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+    Vector2 unkvector[3];
+
+    RPakPtr unkdata;
+    RPakPtr unkdata1;
+
+    int unkdatacount;
+    int unkdatacount1;
+
+    int64 unk;
+
+    byte unk1[4];
+
+    int unk2;
+};
+
+struct unkdata_t
+{
+    float unkfloat[7];
+
+    byte unk[8];
+
+    float unkfloat1[4];
+
+    byte unk1[16];
+};
+
+struct unkdata1_t
+{
+    int unk[2];
+
+    float unkfloat[7];
 };
 
 struct MaterialForAspect

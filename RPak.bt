@@ -238,7 +238,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     {
        MapHeader maph;
     }
-    /*else if( AssetEntries[i].Magic == "rson" )
+    else if( AssetEntries[i].Magic == "rson" )
     {
         RSONHeader rson;
 
@@ -293,8 +293,8 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
                 
             };
         }
-    }*/
-    /*else if( AssetEntries[i].Magic == "uimg")
+    }
+    else if( AssetEntries[i].Magic == "uimg")
     {
         struct UIHashEntry
         {
@@ -339,7 +339,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         } uvsgroup;
 
         //UIImageUVGroup uvsgroup;
-    }*/
+    }
     else if( AssetEntries[i].Magic == "uiia")
     {
         UIIAHeader uh<hidden=false>;
@@ -407,29 +407,71 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         MaterialCPUHeader matlcpuheader;
 
         FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
-        MatlCPUData_V12 cpudata;
-
-        
-
+        MatlCPUData_V12 cpudata;       
     }
-    /*else if( AssetEntries[i].Magic == "shds" )
-    {
-        FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        ShaderSetHeader ssh;
-    }*/
-    /*else if( AssetEntries[i].Magic == "shdr" )
+    else if( AssetEntries[i].Magic == "shds" )
     {
         //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        //ShaderHeader shdr;
+        ShaderSetHeader ssh;
+    }
+    else if( AssetEntries[i].Magic == "shdr" )
+    {
+        //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
+        ShaderHeader shdr;
+
+        /*GTPTR(shdr.unkdata);
+        struct {
+            int data[4 * shdr.unkcount1];
+        } shdrdata;
+
+        GTPTR(shdr.unkdata1);
+        struct {
+            int data[4 * shdr.unkcount1];
+        } shdrdata1;*/
     }
     else if( AssetEntries[i].Magic == "mdl_" )
     {
-        ModelHeader mdlhdr <read=ReadString(pageoffsets[this.Name.Index] + this.Name.Offset)>;
-        GTPTR(mdlhdr.data);
+        ModelHeaderV9 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        
+        // for finding unks
+        Assert(mdlhdr.unk == 0, "troll");
+        Assert(mdlhdr.unk1 == 0, "troll2"); 
+        Assert(mdlhdr.unk2 == 0, "troll2"); 
+        Assert(mdlhdr.unk3 == 0, "troll");
+        Assert(mdlhdr.unk4 == 0, "troll2"); 
+        Assert(mdlhdr.unk5 == 0, "troll2"); 
+        Assert(mdlhdr.unk6 == 0, "troll2");
 
-        char data;
-    }*/
-    /*else if( AssetEntries[i].Magic == "ui\0\0" )
+        GTPTR(mdlhdr.pRMDL);
+        studiohdr_t rmdl <read=ReadString(startof(this) + this.sznameindex)>;
+
+        if(mdlhdr.pPHY.Index || mdlhdr.pPHY.Offset)
+        {
+            GTPTR(mdlhdr.pPHY);
+            int phydata;
+        }
+
+        GTPTR(mdlhdr.pModelData);
+        int modeldata;
+
+        if(mdlhdr.pRRIG.Index || mdlhdr.pRRIG.Offset)
+        {
+            GTPTR(mdlhdr.pRRIG);
+            struct {
+                uint64_t rrigGUID[mdlhdr.rrigCount];
+            } rrigGUIDs;
+        }
+
+        if(mdlhdr.pRSEQ.Index || mdlhdr.pRSEQ.Offset)
+        {
+            GTPTR(mdlhdr.pRSEQ);
+            struct {
+                uint64_t rseqGUID[mdlhdr.rseqCount];
+            } rseqGUIDs;
+        }
+
+    }
+    else if( AssetEntries[i].Magic == "ui\0\0" )
     {
         RUIHeader g <read=ReadString(pageoffsets[this.name.Index] + this.name.Offset), comment=Str("ac: %i, args: %i", this.argClusterCount, this.argCount), hidden=false>;
 
@@ -479,8 +521,8 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             } unk10data;
         }
         
-    }*/
-    /*else if( AssetEntries[i].Magic == "txls" )
+    }
+    else if( AssetEntries[i].Magic == "txls" )
     {
         //TextureListHeader_t tlh;
     }
@@ -488,6 +530,8 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     {
         // if(AssetEntries[i].RawDataPageIndex != -1)
         //     FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+
+        
     }
     else if( AssetEntries[i].Magic == "rpsk" )
     {
@@ -519,14 +563,31 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     {
         SettingsAssetHeader stgs<read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
     }
-    else if( AssetEntries[i].Magic == "anir" && false )
+    else if( AssetEntries[i].Magic == "anir")
     {
         AnimRecordingHeader anir;
 
         GTPTR(anir.keys[0]);
-        char fr;
-    }*/
-    /*else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
+        char strings;
+
+        if(anir.unkdatacount)
+        {
+            GTPTR(anir.unkdata);
+            struct {
+                unkdata_t data[anir.unkdatacount];
+            } unkdata <fgcolor=cRed>;
+        }
+
+        if(anir.unkdatacount1)
+        {
+            GTPTR(anir.unkdata1);
+            struct {
+                unkdata1_t data[anir.unkdatacount1];
+            } unkdata <fgcolor=cGreen>;
+        }
+
+    }
+    else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
     {
         ASeqHeaderV10 anhdr <read=ReadString(pageoffsets[this.szname.Index] + this.szname.Offset)>;
 
@@ -558,7 +619,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         {
             #include "./RSEQ/rseq_v7.bt" // this is just way more compact and I have all the math done     
         } an;
-    }*/
+    }
     else if( AssetEntries[i].Magic == "mt4a" )
     {
         MaterialForAspect mt4a;
