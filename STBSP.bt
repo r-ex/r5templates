@@ -1,0 +1,90 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+
+struct LumpOffsetPair
+{
+    uint64 offset;
+    uint64 count; // multiplied by various amounts to get full data size
+};
+
+struct STBSPHeader
+{
+    DWORD magic <fgcolor=cGreen, format=hex>;
+    WORD majorVer;
+    WORD minorVer;
+    char unk[160];
+    LumpOffsetPair lumps[6];
+    char unk2[128];
+};
+
+// Lumps
+
+struct MaterialInfo
+{
+    uint32 nameOffset; // offset in MATERIAL_NAMES lump for this material's name
+    char unk[0x4];
+    uint64 materialGUID <format=hex, fgcolor=cYellow>;
+    char unk2[0x8];
+};
+
+enum LUMPS // lump types??
+{
+ LUMP_MATERIAL_NAMES,
+ LUMP_MATERIAL_INFO,
+ LUMP_UNUSED2,
+ LUMP_UNK3,
+ LUMP_UNK4,
+ LUMP_UNK5
+};
+
+local uint64 lump0offset = 0;
+local uint64 i = 0;
+
+
+
+STBSPHeader hdr;
+
+// number of strings = MATERIAL_INFO.count
+if(hdr.lumps[ LUMP_MATERIAL_NAMES ].offset != 0)
+{
+    FSeek(hdr.lumps[ LUMP_MATERIAL_NAMES ].offset);
+    char lump0buf[hdr.lumps[ LUMP_MATERIAL_NAMES ].count] <comment="lump 0 - material names">;
+
+    lump0offset = hdr.lumps[ LUMP_MATERIAL_NAMES ].offset;
+}
+
+if(hdr.lumps[ LUMP_MATERIAL_INFO ].offset != 0)
+{
+    FSeek(hdr.lumps[ LUMP_MATERIAL_INFO ].offset);
+
+    struct {
+    
+        for(i = 0; i < hdr.lumps[ LUMP_MATERIAL_INFO ].count; ++i)
+        {
+            MaterialInfo matinfo <read=ReadString(lump0offset + this.nameOffset)>;
+        }
+    } material_info <comment="lump 1 - some material info">;
+}
+
+if(hdr.lumps[ LUMP_UNK3 ].offset != 0)
+{
+    FSeek(hdr.lumps[ LUMP_UNK3 ].offset);
+    char lump3buf[2 * hdr.lumps[ LUMP_UNK3 ].count];
+}
+
+if(hdr.lumps[ LUMP_UNK4 ].offset != 0)
+{
+    FSeek(hdr.lumps[ LUMP_UNK4 ].offset);
+    char lump4buf[24 * hdr.lumps[ LUMP_UNK4 ].count];
+}
+
