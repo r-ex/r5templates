@@ -37,11 +37,22 @@ struct MaterialInfo
     char unk2[0x8];
 };
 
+struct ResidentPage
+{
+    uint64 dataOffset;
+    int dataSize;
+    int unk2;
+    short word10;
+    short word12;
+    short word14;
+    short word16;
+};
+
 enum LUMPS // lump types??
 {
  LUMP_MATERIAL_NAMES,
  LUMP_MATERIAL_INFO,
- LUMP_UNUSED2,
+ LUMP_UNK2,
  LUMP_UNK3,
  LUMP_UNK4,
  LUMP_UNK5
@@ -49,8 +60,6 @@ enum LUMPS // lump types??
 
 local uint64 lump0offset = 0;
 local uint64 i = 0;
-
-
 
 STBSPHeader hdr;
 
@@ -67,13 +76,14 @@ if(hdr.lumps[ LUMP_MATERIAL_INFO ].offset != 0)
 {
     FSeek(hdr.lumps[ LUMP_MATERIAL_INFO ].offset);
 
-    struct {
-    
-        for(i = 0; i < hdr.lumps[ LUMP_MATERIAL_INFO ].count; ++i)
-        {
-            MaterialInfo matinfo <read=ReadString(lump0offset + this.nameOffset)>;
-        }
-    } material_info <comment="lump 1 - some material info">;
+    MaterialInfo matinfo[hdr.lumps[ LUMP_MATERIAL_INFO ].count] <read=ReadString(lump0offset + this.nameOffset), comment="lump 1 - some material info">;
+
+}
+
+if(hdr.lumps[ LUMP_UNK2 ].offset != 0)
+{
+    FSeek(hdr.lumps[ LUMP_UNK2 ].offset);
+    char lump2buf[4 * hdr.lumps[ LUMP_UNK2 ].count];
 }
 
 if(hdr.lumps[ LUMP_UNK3 ].offset != 0)
@@ -85,6 +95,12 @@ if(hdr.lumps[ LUMP_UNK3 ].offset != 0)
 if(hdr.lumps[ LUMP_UNK4 ].offset != 0)
 {
     FSeek(hdr.lumps[ LUMP_UNK4 ].offset);
-    char lump4buf[24 * hdr.lumps[ LUMP_UNK4 ].count];
+    ResidentPage pages[hdr.lumps[ LUMP_UNK4 ].count];
+}
+
+if(hdr.lumps[ LUMP_UNK5 ].offset != 0)
+{
+    FSeek(hdr.lumps[ LUMP_UNK5 ].offset);
+    char lump5buf[hdr.lumps[ LUMP_UNK5 ].count];
 }
 
