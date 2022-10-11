@@ -185,8 +185,8 @@ for(i = 0; i < guidDescClumpCount; ++i)
 
 string ReadTextureName(TextureHeader& th)
 {
-    if(th.szdebugName.Index > 0 || th.szdebugName.Offset > 0)
-        return ReadString(pageoffsets[th.szdebugName.Index] + th.szdebugName.Offset);
+    if(th.pName.Index > 0 || th.pName.Offset > 0)
+        return ReadString(pageoffsets[th.pName.Index] + th.pName.Offset);
     else
         return Str("0x%LX", th.guid);
 };
@@ -347,103 +347,86 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         GTPO(AssetEntries[i].RawDataPageIndex, AssetEntries[i].RawDataPageOffset);
         RUIImage ruiimage <read=ReadString(pageoffsets[this.NameIndex] + this.NameOffset)>;
     }
-    else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version >= 16)
+    else if( AssetEntries[i].Magic == "matl")
     {
-        MaterialHeaderV16 mh <read=ReadString(pageoffsets[this.m_pszName.Index] + this.m_pszName.Offset), hidden=false>;
+        if(AssetEntries[i].Version >= 16)
+            MaterialHeaderV16 mh <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset), hidden=false>;
+        else if(AssetEntries[i].Version == 15)
+            MaterialHeaderV15 mh <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset), hidden=false>;
+        else
+            MaterialHeaderV12 mh <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset), hidden=false>;
 
-        FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
-        MaterialCPUHeader matlcpuheader;
+        numtextures = (mh.pStreamingTextureHandles.Offset - mh.pTextureHandles.Offset) / 8;
 
-        FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
-        char cpudata;
-    }
-    else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version == 15)
-    {
-        MaterialHeaderV15 mh <read=ReadString(pageoffsets[this.szdebugName.Index] + this.szdebugName.Offset), hidden=false>;
-
-        numtextures = (mh.streamingTextureHandles.Offset - mh.texturesHandles.Offset) / 8;
-
-        FSeek(pageoffsets[mh.texturesHandles.Index] + mh.texturesHandles.Offset);
+        FSeek(pageoffsets[mh.pTextureHandles.Index] + mh.pTextureHandles.Offset);
 
         struct
         {
-            uint64 guid[numtextures];
+            uint64 guid[numtextures] <read=Str("%s - %LX", "txtr", this)>;
             uint64 streamedGuid[numtextures];
             
             string surfaceprop <fgcolor=cLtRed>;
 
-            if(mh.szsurfaceProp2.Index || mh.szsurfaceProp2.Offset)
+            if(mh.pSurfaceProp2.Index || mh.pSurfaceProp2.Offset)
                 string surfaceprop2 <fgcolor=cLtRed>;
 
         } materialdata;
 
         FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
-        MaterialCPUHeader matlcpuheader;
+        MaterialCPUHeader matlcpuheader <read=Str("Version: %i Size: %i", this.version, this.size)>;
 
-        FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
-        char cpudata;
-    }
-    else if( AssetEntries[i].Magic == "matl" && AssetEntries[i].Version == 12)
-    {
-        MaterialHeaderV12 mh <read=ReadString(pageoffsets[this.szdebugName.Index] + this.szdebugName.Offset), hidden=false>;
-
-        numtextures = (mh.streamingTextureHandles.Offset - mh.texturesHandles.Offset) / 8;
-
-        FSeek(pageoffsets[mh.texturesHandles.Index] + mh.texturesHandles.Offset);
-
-        struct
+        if(matlcpuheader.size)
         {
-            uint64 guid[numtextures];
-            uint64 streamedGuid[numtextures];
-            
-            string surfaceprop <fgcolor=cLtRed>;
-
-            if(mh.szsurfaceProp2.Index || mh.szsurfaceProp2.Offset)
-                string surfaceprop2 <fgcolor=cLtRed>;
-
-        } materialdata;
-
-        FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
-        MaterialCPUHeader matlcpuheader;
-
-        FSeek(pageoffsets[matlcpuheader.data.Index] + matlcpuheader.data.Offset);
-        MatlCPUData_V12 cpudata;       
+            FSeek(pageoffsets[matlcpuheader.pData.Index] + matlcpuheader.pData.Offset);
+            MatlCPUData_V12 cpudata;
+        }
     }
     else if( AssetEntries[i].Magic == "shds" )
     {
-        //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        ShaderSetHeader ssh;
+        if(AssetEntries[i].Version == 8)
+            ShaderSetHeaderV8 ssh <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        if(AssetEntries[i].Version == 11)
+            ShaderSetHeaderV11 ssh <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
     }
     else if( AssetEntries[i].Magic == "shdr" )
     {
-        //FSeek(pageoffsets[AssetEntries[i].SubHeaderPageIndex] + AssetEntries[i].SubHeaderPageOffset);
-        ShaderHeader shdr;
+        if(AssetEntries[i].Version == 8)
+            ShaderHeaderV8 shdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        if(AssetEntries[i].Version >= 12)
+            ShaderHeaderV12 shdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
-        /*GTPTR(shdr.unkdata);
+        GTPTR(shdr.pUnkData);
         struct {
-            int data[4 * shdr.unkcount1];
+            if(AssetEntries[i].Version == 8)
+                int data[4 * shdr.dataCount];
+            if(AssetEntries[i].Version >= 12)
+                int data[4];
         } shdrdata;
 
-        GTPTR(shdr.unkdata1);
-        struct {
-            int data[4 * shdr.unkcount1];
-        } shdrdata1;*/
+        if(shdr.pUnkData1.Index || shdr.pUnkData1.Offset)
+        {
+            GTPTR(shdr.pUnkData1);
+            struct {
+                if(AssetEntries[i].Version == 8)
+                    int data[4 * shdr.dataCount];
+                if(AssetEntries[i].Version >= 12)
+                    int data[4];
+            } shdrdata1;
+        }
     }
     else if( AssetEntries[i].Magic == "mdl_" )
     {
-        ModelHeaderV9 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-        
-        // for finding unks
-        Assert(mdlhdr.unk == 0, "troll");
-        Assert(mdlhdr.unk1 == 0, "troll2"); 
-        Assert(mdlhdr.unk2 == 0, "troll2"); 
-        Assert(mdlhdr.unk3 == 0, "troll");
-        Assert(mdlhdr.unk4 == 0, "troll2"); 
-        Assert(mdlhdr.unk5 == 0, "troll2"); 
-        Assert(mdlhdr.unk6 == 0, "troll2");
+        if(AssetEntries[i].SubHeaderSize == 80) // v8
+            ModelHeaderV8 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        if(AssetEntries[i].SubHeaderSize == 120) // v9 - v12
+            ModelHeaderV9 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        if(AssetEntries[i].SubHeaderSize == 104) // v12.1 - v12.2
+            ModelHeaderV121 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        if(AssetEntries[i].SubHeaderSize == 128) // v13 - v15
+            ModelHeaderV13 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
         GTPTR(mdlhdr.pRMDL);
-        studiohdr_t rmdl <read=ReadString(startof(this) + this.sznameindex)>;
+        studiohdr_t rmdl <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
 
         if(mdlhdr.pPHY.Index || mdlhdr.pPHY.Offset)
         {
@@ -458,7 +441,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         {
             GTPTR(mdlhdr.pRRIG);
             struct {
-                uint64_t rrigGUID[mdlhdr.rrigCount];
+                uint64_t rrigGUID[mdlhdr.rrigCount] <read=Str("%s - %LX", "arig", this)>;
             } rrigGUIDs;
         }
 
@@ -466,10 +449,25 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         {
             GTPTR(mdlhdr.pRSEQ);
             struct {
-                uint64_t rseqGUID[mdlhdr.rseqCount];
+                uint64_t rseqGUID[mdlhdr.rseqCount] <read=Str("%s - %LX", "aseq", this)>;
             } rseqGUIDs;
         }
 
+    }
+    else if( AssetEntries[i].Magic == "arig" )
+    {
+        AnimRigHeaderV4 rrighdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        
+        GTPTR(rrighdr.pRRIG);
+        studiohdr_t rrig <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
+
+        if(rrighdr.pRSEQ.Index || rrighdr.pRSEQ.Offset)
+        {
+            GTPTR(rrighdr.pRSEQ);
+            struct {
+                uint64_t rseqGUID[rrighdr.rseqCount] <read=Str("%s - %LX", "aseq", this)>;
+            } rseqGUIDs;
+        }
     }
     else if( AssetEntries[i].Magic == "ui\0\0" )
     {
@@ -587,39 +585,49 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         }
 
     }
-    else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
+    /*else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
     {
-        ASeqHeaderV10 anhdr <read=ReadString(pageoffsets[this.szname.Index] + this.szname.Offset)>;
+        ASeqHeaderV10 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
-        GTPTR(anhdr.data);
+        GTPTR(anhdr.pData);
 
         struct
         {
             #include "./RSEQ/rseq_v10.bt" // this is just way more compact and I have all the math done     
         } an;
+
+        GTPTR(anhdr.pExternalData);
+        struct {
+            char data[anhdr.externalDataSize];
+        } externaldata;
     }
     else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 7 && AssetEntries[i].SubHeaderSize == 56)
     {
-        ASeqHeaderV71 anhdr <read=ReadString(pageoffsets[this.szname.Index] + this.szname.Offset)>;
+        ASeqHeaderV71 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
-        GTPTR(anhdr.data);
+        GTPTR(anhdr.pData);
 
         struct
         {
             #include "./RSEQ/rseq_v71.bt" // this is just way more compact and I have all the math done     
         } an;
+
+        GTPTR(anhdr.pExternalData);
+        struct {
+            char data[anhdr.externalDataSize];
+        } externaldata;
     }
     else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 7 )
     {
-        ASeqHeaderV7 anhdr <read=ReadString(pageoffsets[this.szname.Index] + this.szname.Offset)>;
+        ASeqHeaderV7 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
-        GTPTR(anhdr.data);
+        GTPTR(anhdr.pData);
 
         struct
         {
             #include "./RSEQ/rseq_v7.bt" // this is just way more compact and I have all the math done     
         } an;
-    }
+    }*/
     else if( AssetEntries[i].Magic == "mt4a" )
     {
         MaterialForAspect mt4a;

@@ -265,18 +265,16 @@ enum <byte> MaterialShaderType_t
 
 struct UnknownMaterialSectionV15
 {
-    // Spoon - I have kept the names that Rika made for the most part here, except for adding m_ 
-    
     // required but seems to follow a pattern. maybe related to "Unknown2" above?
     // nulling these bytes makes the material stop drawing entirely
-    uint32_t m_Unknown1[8];
+    uint32_t unknown[8];
     
     // for more details see the 'UnknownMaterialSectionV12' struct.
-    uint32_t m_UnkRenderFlags;
-    uint16_t m_VisibilityFlags; // different render settings, such as opacity and transparency.
-    uint16_t m_FaceDrawingFlags; // how the face is drawn, culling, wireframe, etc.
+    int unkFlags; // this changes sometimes.
+	short visibilityFlags; // different render settings, such as opacity and transparency.
+	short faceFlags; // how the face is drawn, culling, wireframe, etc.
     
-    uint64_t m_Padding;
+    __int64 reserved; // probably
 };
 
 struct UnknownMaterialSectionV12
@@ -284,75 +282,73 @@ struct UnknownMaterialSectionV12
 	// not sure how these work but 0xF0 -> 0x00 toggles them off and vice versa.
 	// they seem to affect various rendering filters, said filters might actually be the used shaders.
 	// the duplicate one is likely for streamed textures.
-	uint32_t unkrenderlighting;
-	uint32_t unkrenderaliasing;
-	uint32_t unkrenderDoF;
-	uint32_t unkrenderunknown;
+	uint32_t unkRenderLighting;
+	uint32_t unkRenderAliasing;
+	uint32_t unkRenderDoF;
+	uint32_t unkRenderUnknown;
 
-	uint32_t unkflags; // this changes sometimes.
-	uint16_t visibilityflags; // different render settings, such as opacity and transparency.
-	uint16_t faceflags; // how the face is drawn, culling, wireframe, etc.
+	int unkFlags; // this changes sometimes.
+	short visibilityFlags; // different render settings, such as opacity and transparency.
+	short faceFlags; // how the face is drawn, culling, wireframe, etc.
 
-	uint64_t reserved;
+	__int64 reserved; // probably
 };
 
 struct MaterialHeaderV12
 {
-	uint64_t reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t padding[8]; // unused
+	__int64 reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
+	char padding[8]; // unused
 
-	uint64_t guid; // guid of this material asset
+	uint64_t guid <read=Str("%s - %LX", "matl", this)>; // guid of this material asset
 
-	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
-	RPakPtr szsurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
-	RPakPtr szsurfaceProp2; // pointer to surfaceprop2 
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
+	RPakPtr pSurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr pSurfaceProp2 <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
 	// IDX 3: DepthVSM
 	// IDX 4: ColPass
 
-	uint64_t guidRefs[4]; // Required to have proper textures.
+	uint64_t guidRefs[4] <read=Str("%s - %LX", "matl", this)>; // Required to have proper textures.
 
 	// these blocks relate to different render filters and flags. still not well understood.
-	UnknownMaterialSectionV12 unksections[2];
+	UnknownMaterialSectionV12 unkSections[2];
 
-	uint64_t shadersetGuid; // guid of the shaderset asset that this material uses
+	uint64_t shadersetGuid <read=Str("%s - %LX", "shds", this)>; // guid of the shaderset asset that this material uses
 
-	RPakPtr texturesHandles; // TextureGUID Map
+	RPakPtr pTextureHandles; // TextureGUID Map
+	RPakPtr pStreamingTextureHandles; // reserved slot for texture guids which have streamed mip levels
+	short streamingTextureCount; // reserved slot for the number of textures with streamed mip levels
 
-	// both should be reserved - used to store the handles for any textures that have streaming mip levels and the number of textures that have streamed mips
-	RPakPtr streamingTextureHandles;
-	uint16_t streamingTextureCount; // Number of textures with streamed mip levels.
+	int flags <read=Str("0x%LX", this)>; // related to cpu data
 
-	uint32_t flags; // see ImageFlags in the apex struct.
-	uint16_t unknown2; // name carried over from apex struct.
+	short unknown2; // reserved texture count?
 
-	uint64_t reserved; // nothing is ever placed here (as I've seen so far), probably reserved for stuff on load.
+	__int64 reserved; // nothing is ever placed here (as I've seen so far), probably reserved for stuff on load.
 
 	// seems to be 0xFBA63181 for loadscreens
-	uint32_t unknown3; // name carried over from apex struct.
+	int unknown3; // name carried over from apex struct.
+	int unknown4; // name carried over from apex struct.
 
-	uint32_t unknown4; // name carried over from apex struct.
+	__int64 flags2 <read=Str("0x%LX", this)>;
+	
+	short width;
+	short height;
 
-	uint32_t flags2;
-	uint32_t something2; // seems mostly unchanged between all materials, including apex, however there are some edge cases where this is 0x0.
-
-	uint16_t width;
-	uint16_t height;
-	uint32_t unknown1; // might be padding but could also be something else such as "m_Unknown1"?.
+	int unknown1; // reserved texture count?
 };
 
 struct MaterialHeaderV15
 {
-	uint64_t reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t padding[8]; // unused
+	__int64 reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
+	char padding[8]; // unused
 
-	uint64_t guid <format=hex>; // guid of this material asset
+	uint64_t guid <read=Str("%s - %LX", "matl", this)>; // guid of this material asset
 
-	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
-	RPakPtr szsurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
-	RPakPtr szsurfaceProp2; // pointer to surfaceprop2 
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
+	RPakPtr pSurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr pSurfaceProp2 <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -360,52 +356,51 @@ struct MaterialHeaderV15
 	// IDX 4: DepthShadowTight
 	// IDX 5: ColPass
 
-	uint64_t guidRefs[5]; // Required to have proper textures.
-	uint64_t shadersetGuid; // guid of the shaderset asset that this material uses
+	uint64_t guidRefs[5] <read=Str("%s - %LX", "matl", this)>; // Required to have proper textures.
+	uint64_t shadersetGuid <read=Str("%s - %LX", "shds", this)>; // guid of the shaderset asset that this material uses
 
-	RPakPtr texturesHandles; // TextureGUID Map
+	RPakPtr pTextureHandles; // TextureGUID Map
+	RPakPtr pStreamingTextureHandles; // reserved slot for texture guids which have streamed mip levels
+	short streamingTextureCount; // reserved slot for the number of textures with streamed mip levels
 
-	// both should be reserved - used to store the handles for any textures that have streaming mip levels and the number of textures that have streamed mips
-	RPakPtr streamingTextureHandles;
-	uint16_t streamingTextureCount; // Number of textures with streamed mip levels.
+	short width;
+	short height;
 
-	int16 m_nWidth;
-	int16 m_nHeight;
-	int16 m_Unknown1;
+	short unknown1; // reserved texture count?
 	
-	uint32_t m_Flags;
-	uint32_t m_Unknown2;
-	
-	uint32_t m_Unknown3; // REQUIRED but why?
-	
-	uint32_t m_Unknown4;
-	
-	// of these 2 seem to be required
-	uint32_t m_Flags2;
-	uint32_t something2;
-	
-	UnknownMaterialSectionV15 m_UnknownSections[2];
+	int flags <read=Str("0x%LX", this)>; // related to cpu data
 
-	uint8_t bytef0;
-	uint8_t bytef1;
-	MaterialShaderType_t bytef2; // used '4' and '8' observed
-	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	int unknown2;
+	int unknown3;	
+	int unknown4;
+	
+	__int64 flags2 <read=Str("0x%LX", this)>;
+	
+	UnknownMaterialSectionV15 unknownSections[2];
 
-	uint32_t unk;
+	byte bytef0;
+	byte bytef1;
 
-    uint64 txanGuid;
+	MaterialShaderType_t materialType; // material type
+
+	byte bytef3; // used for unksections loading in UpdateMaterialAsset
+
+	int unk;
+
+    uint64_t textureAnimationGuid <read=Str("%s - %LX", "txan", this)>;
 };
 
 // header size unchanged all the way until v20, does not mean vars have not changed within
 struct MaterialHeaderV16
 {
-	uint64_t m_VtblReserved; // Gets set to CMaterialGlue vtbl ptr
-	uint8_t m_Padding[0x8]; // Un-used.
-	uint64_t m_nGUID; // guid of this material asset
+	__int64 reservedVtbl; // Gets set to CMaterialGlue vtbl ptr
+	char padding[8]; // unused
 
-	RPakPtr m_pszName; // pointer to partial asset path
-	RPakPtr m_pszSurfaceProp; // pointer to surfaceprop (as defined in surfaceproperties.rson)
-	RPakPtr m_pszSurfaceProp2; // pointer to surfaceprop2 
+	uint64_t guid <read=Str("%s - %LX", "matl", this)>; // guid of this material asset
+
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to partial asset path
+	RPakPtr pSurfaceProp <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop (as defined in surfaceproperties.txt)
+	RPakPtr pSurfaceProp2 <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to surfaceprop2 
 
 	// IDX 1: DepthShadow
 	// IDX 2: DepthPrepass
@@ -413,40 +408,40 @@ struct MaterialHeaderV16
 	// IDX 4: DepthShadowTight
 	// IDX 5: ColPass
 
-	uint64_t m_GUIDRefs[5]; // Required to have proper textures.
-	uint64_t m_pShaderSet; // guid of the shaderset asset that this material uses
+	uint64_t guidRefs[5] <read=Str("%s - %LX", "matl", this)>; // Required to have proper textures.
+	uint64_t shadersetGuid <read=Str("%s - %LX", "shds", this)>; // guid of the shaderset asset that this material uses
 
-	RPakPtr m_pTextureHandle; // TextureGUID Map
-	RPakPtr m_pStreamingTextureHandles; // Streamable TextureGUID Map
-	
-	int16 m_nStreamingTextureHandleCount; // Number of textures with streamed mip levels.
-	int16 m_nWidth;
-	int16 m_nHeight;
-	int16 m_Unknown1;
-	
-	uint32_t m_Flags;
-	uint32_t m_Unknown2;
-	
-	uint32_t m_Unknown3; // REQUIRED but why?
-	
-	uint32_t m_Unknown4;
-	
-	// of these 2 seem to be required
-	uint32_t m_Flags2;
-	uint32_t something2;
-	
-	UnknownMaterialSectionV15 m_UnknownSections;
+	RPakPtr pTextureHandles; // TextureGUID Map
+	RPakPtr pStreamingTextureHandles; // reserved slot for texture guids which have streamed mip levels
+	short streamingTextureCount; // reserved slot for the number of textures with streamed mip levels
 
-    uint32 unk_v16[2];
+	short width;
+	short height;
 
-    uint8_t bytef0;
-	uint8_t bytef1;
-	MaterialShaderType_t bytef2; // used '4' and '8' observed
-	uint8_t bytef3; // used for unksections loading in UpdateMaterialAsset
+	short unknown1; // reserved texture count?
+	
+	int flags <read=Str("0x%LX", this)>; // related to cpu data
 
-	uint32_t unk;
+	int unknown2;
+	int unknown3;	
+	int unknown4;
+	
+	__int64 flags2 <read=Str("0x%LX", this)>;
+	
+	UnknownMaterialSectionV15 unknownSections;
 
-    uint64 txanGuid;
+    int unk_v16[2];
+
+    byte bytef0;
+	byte bytef1;
+
+	MaterialShaderType_t materialType; // material type
+
+	byte bytef3; // used for unksections loading in UpdateMaterialAsset
+
+	int unk;
+
+    uint64 textureAnimationGuid <read=Str("%s - %LX", "txan", this)>;
 
     uint32 unk1_v16[6];
 };
@@ -509,9 +504,9 @@ struct MaterialHeaderV20
 
 struct MaterialCPUHeader
 {
-	RPakPtr  data; // points to the rest of the cpu data. maybe for colour?
-	uint32_t size;
-	uint32_t version; // every unknown is now either datasize, version, or flags
+	RPakPtr pData; // points to the rest of the cpu data. maybe for colour?
+	int size;
+	int version; // every unknown is now either datasize, version, or flags
 };
 
 struct uvTransformMatrix
@@ -588,18 +583,58 @@ struct MatlCPUData_V12
 //
 // SHADERS
 //
-struct ShaderHeaderV8
+enum <byte> ShaderType
 {
-	RPakPtr name <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
-
-	int unkcount;
-    int unkcount1;
-
-	RPakPtr unkdata;
-    RPakPtr unkdata1;
+    Pixel,
+    Vertex,
+    Geometry,
+    Hardware,
+    Domain,
+    Compute
 };
 
-struct ShaderSetHeader {
+struct ShaderHeaderV8
+{
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	ShaderType shaderType;
+    byte padd[3]; // do this so we can use the same enum
+    int dataCount;
+
+	RPakPtr pUnkData;
+    RPakPtr pUnkData1;
+};
+
+struct ShaderHeaderV12
+{
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	ShaderType shaderType;
+    byte unk[3];
+
+    short unk1[2];
+
+	RPakPtr pUnkData;
+    RPakPtr pUnkData1;
+};
+
+struct ShaderHeader
+{
+  RPakPtr pName;
+  ShaderType shaderType;
+  char m_byte2;
+  char m_byte3;
+  char m_byte4;
+  char m_byte5;
+  char m_byte6;
+  char m_byte7;
+  char m_byte8;
+  RPakPtr m_pUnk1;
+  RPakPtr m_pUnk2;
+};
+
+struct ShaderSetHeader
+{
 	uint8_t Unknown1[0x18];
 	uint16_t Count1;
 	uint16_t Count2;
@@ -616,32 +651,60 @@ struct ShaderSetHeader {
 	uint64_t PixelShaderHash;
 };
 
-struct ShaderSetHeaderV8 {
+struct ShaderSetHeaderV8
+{
 
-	uint64_t reservedVtbl;
+	__int64 reservedVtbl;
 	
-    RPakPtr name <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+    RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
 
-	uint8_t Unknown1[0x8];
+	char Unknown1[8];
 
-	uint16_t Count1;
+	short Count1;
 
-	uint16_t textureInputCount;
+	short textureInputCount;
 
-	uint16_t Count3;
-	uint8_t Byte1;
-	uint8_t Byte2;
+	short Count3;
 
-	uint8_t Unknown2[0x8];
+	byte Byte1;
+	byte Byte2;
+
+	byte Unknown2[8];
     
-    uint64_t unk[4];
+    __int64 unk[4];
 
     /*uint64_t domainShaderGuid
 	uint64_t hullShaderGuid;
 	uint64_t computeShaderGuid;
 	uint64_t geometryShaderGuid;*/
-	uint64_t vextexShaderGuid;
-	uint64_t pixelShaderGuid;
+	uint64_t vextexShaderGuid <read=Str("%s - %LX", "shdr", this)>;
+	uint64_t pixelShaderGuid <read=Str("%s - %LX", "shdr", this)>;
+
+};
+
+struct ShaderSetHeaderV11
+{
+
+	__int64 reservedVtbl;
+	
+    RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	char Unknown1[8];
+
+	short Count1;
+
+	short textureInputCount;
+
+	short Count3;
+
+	byte Byte1;
+	byte Byte2;
+
+	uint64_t ShaderHash1;
+	uint64_t ShaderHash2;
+
+	uint64_t vextexShaderGuid <read=Str("%s - %LX", "shdr", this)>;
+	uint64_t pixelShaderGuid <read=Str("%s - %LX", "shdr", this)>;
 
 };
 
@@ -651,7 +714,7 @@ struct ShaderSetHeaderV8 {
 struct TextureHeader
 {
 	uint64_t guid <format=hex>;
-	RPakPtr szdebugName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
 
 	uint16_t width <fgcolor=cPurple>;
 	uint16_t height <fgcolor=cYellow>;
@@ -683,7 +746,7 @@ struct TextureHeader
 
 struct TextureHeaderV9
 {
-	RPakPtr szdebugName <fgcolor=cLtRed>;
+	RPakPtr pName <fgcolor=cLtRed>;
 
 	uint16_t format;
 
@@ -823,46 +886,6 @@ struct UIImageUV
 //
 // MODELS 
 //
-/*struct ModelHeader
-{
-	// IDST data
-	// .mdl
-	RPakPtr pRMDL;
-	uint64_t Padding = 0;
-
-	// model path
-	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr pName;
-	uint64_t Padding2 = 0;
-
-	// .phy
-	RPakPtr pPhyData;
-	uint64_t Padding3 = 0;
-
-	// preload cache data for static props
-	RPakPtr pStaticPropVtxCache;
-
-	// pointer to data for the model's arig guid(s?)
-	RPakPtr pAnimRigs;
-
-	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
-	uint32_t animRigCount = 0;
-
-	// size of the data kept in starpak
-	uint32_t unkDataSize = 0;
-	uint32_t alignedStreamingSize = 0; // full size of the starpak entry, aligned to 4096.
-
-	uint64_t Padding6 = 0;
-
-	// number of anim sequences directly associated with this model
-	uint32_t animSeqCount = 0;
-	RPakPtr pAnimSeqs;
-
-	uint64_t Padding7 = 0;
-	uint64_t Padding8 = 0;
-	uint64_t Padding9 = 0;
-};*/
-
 struct ModelHeaderV8
 {
 	// IDST data
@@ -887,7 +910,7 @@ struct ModelHeaderV8
 
 	// size of the data kept in starpak
 	uint32_t unkDataSize;
-	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
+	uint32_t or ; // full size of the starpak entry, aligned to 4096.
 
 	// number of anim sequences directly associated with this model
 	uint32_t rseqCount;
@@ -924,248 +947,113 @@ struct ModelHeaderV9
 
 	// size of the data kept in starpak
 	uint32_t unkDataSize;
-	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
-
-	
+	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.	
 
     uint64_t unk3;
-
     uint64_t unk4;
 	uint64_t unk5;
 
     // number of anim sequences directly associated with this model
 	uint32_t rseqCount;
-	RPakPtr pRSEQ;
+	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
 
 	uint64_t unk6;
-
 };
 
-struct ModelHeader
+// season 7
+struct ModelHeaderV121
 {
 	// IDST data
-	RPakPtr SkeletonPtr <comment=".rmdl">;
-	uint64_t Padding;
+	RPakPtr pRMDL <comment=".rmdl">;
+
+    uint64_t unk;
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
-	RPakPtr Name;
-	uint64_t Padding2;
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+	uint64_t unk1;
 
 	// charms do not use this, but goblin_dropship and weapons do
-	RPakPtr PhyPtr <comment=".phy">;
-	uint64_t Padding3;
+	RPakPtr pPHY <comment=".phy">;
 
-	RPakPtr StaticPropStreamPreloadData <comment=".vtx and .vvd combined. preload data for static props only">;
+    uint64_t unk2;
+
+	RPakPtr pModelData <comment=".vtx and .vvd combined. preload data for static props only">;
 
 	// pointer to data for the model's arig guid(s?)
-	RPakPtr AnimRigRefPtr <comment="pointer to the guids of the anim rigs associated with this model">;
+	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
 
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
-	uint32_t AnimRigCount;
+	uint32_t rrigCount;
 
 	// size of the data kept in starpak
-	uint32_t permanentDataSize;
-	uint32_t streamingDataSize;
-	uint64_t Padding6;
+	uint32_t unkDataSize;
+	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
+	
+    uint64_t unk3;
 
-	// number of anim sequences directly associated with this model
-	uint32_t AnimSequenceCount;
-	RPakPtr AnimSequencePtr;
+    // number of anim sequences directly associated with this model
+	uint32_t rseqCount;
+	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
 
-	uint64_t Padding7;
-	uint64_t Padding8;
-	uint64_t Padding9;
+	uint64_t unk6;
 };
 
-struct studiohdr_t
+struct ModelHeaderV13
 {
-	int id; // Model format ID, such as "IDST" (0x49 0x44 0x53 0x54)
-	int version; // Format version number, such as 48 (0x30,0x00,0x00,0x00)
-	int checksum; // This has to be the same in the phy and vtx files to load!
-	int sznameindex; // This has been moved from studiohdr2 to the front of the main header.
-	char name[64]; // The internal name of the model, padding with null bytes.
-	                // Typically "my_model.mdl" will have an internal name of "my_model"
-	int length; // Data size of MDL file in bytes.
- 
-	Vector3 eyeposition;	// ideal eye position
+	// IDST data
+	RPakPtr pRMDL <comment=".rmdl">;
 
-	Vector3 illumposition;	// illumination center
-	
-	Vector3 hull_min;		// ideal movement hull size
-	Vector3 hull_max;			
+    uint64_t unk;
 
-	Vector3 view_bbmin;		// clipping bounding box
-	Vector3 view_bbmax;		
- 
-	int flags;
-  
-	int numbones; // bones
-	int boneindex;
- 
-	int numbonecontrollers; // bone controllers
-	int bonecontrollerindex;
- 
-	int numhitboxsets;
-	int hitboxsetindex;
- 
-    // unused now
-	int numlocalanim; // animations/poses
-	int localanimindex; // animation descriptions
- 
-	int numlocalseq; // sequences
-	int	localseqindex;
- 
-	int activitylistversion; // initialization flag - have the sequences been indexed?
- 
-	// mstudiotexture_t
-	// short rpak path
-	// raw textures
-    int materialtypesindex;
-	int numtextures; // the material limit exceeds 128, probably 256.
-	int textureindex;
- 
-	// this should always only be one, unless using vmts.
-	// raw textures search paths
-	int numcdtextures;
-	int cdtextureindex;
- 
-	// replaceable textures tables
-	int numskinref;
-	int numskinfamilies;
-	int skinindex;
- 
-	int numbodyparts;		
-	int bodypartindex;
- 
-	int numlocalattachments;
-	int localattachmentindex;
- 
-	int numlocalnodes;
-	int localnodeindex;
-	int localnodenameindex;
- 
-	int numunknodes;
-	int unknodexindex;
- 
-	int meshindex; // offset to model meshes
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
 
-	int numflexcontrollers;
-	int flexcontrollerindex;
- 
-	int numflexrules;
-	int flexruleindex;
- 
-	int numikchains;
-	int ikchainindex;
+	uint64_t unk1;
 
-	// this is rui meshes
-	int numruimeshes;
-	int ruimeshindex;
- 
-	int numlocalposeparameters;
-	int localposeparamindex;
- 
-	int surfacepropindex;
- 
-	int keyvalueindex;
-	int keyvaluesize;
- 
-	int numlocalikautoplaylocks;
-	int localikautoplaylockindex;
- 
-	float mass;
-	int contents;
-	
-	// unused for packed models
-	int numincludemodels;
-	int includemodelindex;
-	
-	uint32 virtualModel;
+	// charms do not use this, but goblin_dropship and weapons do
+	RPakPtr pPHY <comment=".phy">;
 
-	int bonetablebynameindex;
-	
-	// if STUDIOHDR_FLAGS_CONSTANT_DIRECTIONAL_LIGHT_DOT is set,
-	// this value is used to calculate directional components of lighting 
-	// on static props
-	byte constdirectionallightdot;
+    uint64_t unk2;
 
-	// set during load of mdl data to track *desired* lod configuration (not actual)
-	// the *actual* clamped root lod is found in studiohwdata
-	// this is stored here as a global store to ensure the staged loading matches the rendering
-	byte rootLOD;
-	
-	// set in the mdl data to specify that lod configuration should only allow first numAllowRootLODs
-	// to be set as root LOD:
-	//	numAllowedRootLODs = 0	means no restriction, any lod can be set as root lod.
-	//	numAllowedRootLODs = N	means that lod0 - lod(N-1) can be set as root lod, but not lodN or lower.
-	byte numAllowedRootLODs;
+	RPakPtr pModelData <comment=".vtx and .vvd combined. preload data for static props only">;
 
-	byte unused;
+	// pointer to data for the model's arig guid(s?)
+	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
 
-	float fadedistance;
-	
-	float gathersize; // what. from r5r struct
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t rrigCount;
 
-    int numunk_v54_early;
-    int unkindex_v54_early;
+	// size of the data kept in starpak
+	uint32_t unkDataSize;
+	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.	
 
-	float flVertAnimFixedPointScale; // to be verified
-    int surfacepropLookup; // this index must be cached by the loader, not saved in the file
+    Vector3 unkvec; // mins
+    Vector3 unkvec1; // maxs
 
-	// this is in all shipped models, probably part of their asset bakery. it should be 0x2CC.
-	int mayaindex; // doesn't actually need to be written pretty sure, only four bytes when not present.
+    uint64_t unk3;
 
-	int numsrcbonetransform;
-	int srcbonetransformindex;
+    // number of anim sequences directly associated with this model
+	uint32_t rseqCount;
+	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
 
-	int	illumpositionattachmentindex;
-	
-	int linearboneindex;
-
-	int m_nBoneFlexDriverCount; // unsure if that's what it is in apex
-	int m_nBoneFlexDriverIndex;
-	
-    int unkindexflex;
-
-	int unk1_v54[6];
-
-	// always "" or "Titan"
-    int unkstringindex <read=ReadString(mdlHeader.unkstringindex)>;
-
-	// this is now used for combined files in rpak, vtx, vvd, and vvc are all combined while vphy is separate.
-	// the indexes are added to the offset in the rpak mdl_ header.
-	// vphy isn't vphy, looks like a heavily modified vphy.
-	int vtxindex; // VTX
-	int vvdindex; // VVD / IDSV
-	int vvcindex; // VVC / IDCV 
-	int vphyindex; // VPHY / IVPS
-
-	int vtxsize;
-	int vvdsize;
-	int vvcsize;
-	int vphysize; // still used in models using vg
-
-	// unk2_v54[3] is the chunk after following unkindex2's chunk
-	int unk2_v54[3]; // the same four unks in v53 I think, the first index being unused now probably
-
-    int unkindex3; // index to chunk after string block
-
-    // Per Tri Collision AABB size
-    Vector3 mins;
-    Vector3 maxs; // seem to be the same as hull size
-
-    int unk3_v54[3];
-
-	int unkindex4; // chunk before unkindex3 sometimes
-
-	int unk4_v54[3]; // same as unk3_v54_v121
-
-    //int vgindex; // 0tVG
-    //int unksize; // might be offset
-    //int unksize1; // might be offset
+	uint64_t unk6;
 };
 
+struct AnimRigHeaderV4
+{
+	RPakPtr pRRIG;
+    RPakPtr pName;
+
+	int unk;
+
+	int rseqCount;
+	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
+
+	int64 unk1;
+};
 
 struct UIFontData
 {
@@ -1288,20 +1176,7 @@ struct TextureListHeader_t
 	uint64_t textureCount;
 };
 
-struct ShaderHeader
-{
-  RPakPtr m_pszName;
-  char m_byte1;
-  char m_byte2;
-  char m_byte3;
-  char m_byte4;
-  char m_byte5;
-  char m_byte6;
-  char m_byte7;
-  char m_byte8;
-  RPakPtr m_pUnk1;
-  RPakPtr m_pUnk2;
-};
+
 
 
 struct ParticleScriptHeader
@@ -1358,65 +1233,65 @@ struct SettingsAssetHeader
 // aseq headers
 struct ASeqHeaderV7
 {
-	RPakPtr data; // pointer to raw rseq.
-	RPakPtr szname <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
+	RPakPtr pData; // pointer to raw rseq.
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr modelGuid;
-	uint32_t modelCount;
+	RPakPtr pModels;
+	int modelCount;
 
-    uint32_t reserved;
+    int reserved;
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr settingsGuid;
-	uint32_t settingsCount;
+	RPakPtr pSettings;
+	int settingsCount;
 
-    uint32_t reserved1; // assumed
+    int reserved1;
 };
 
 struct ASeqHeaderV71
 {
-    RPakPtr data; // pointer to raw rseq.
-    RPakPtr szname <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
+    RPakPtr pData; // pointer to raw rseq.
+    RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr modelGuid;
-	uint32_t modelCount; // to be verified on v7
+	RPakPtr pModels;
+	int modelCount; // to be verified on v7
 
 	// size of data that is not locally in the rseq.
-	uint32_t externalDataSize;
+	int externalDataSize;
 
 	// this can point to a group of guids and not one singular one.
-	RPakPtr settingsGuid;
-	uint32_t settingsCount;
+	RPakPtr pSettings;
+	int settingsCount;
 
-    uint32_t reserved1; // assumed
+    int reserved1; // assumed
 
 	// pointer to data stored outside of the raw rseq.
-    RPakPtr externalData;
+    RPakPtr pExternalData;
 };
 
 struct ASeqHeaderV10
 {
-	RPakPtr data; // pointer to raw rseq.
-	RPakPtr szname <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
+	RPakPtr pData; // pointer to raw rseq.
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
-    uint64_t Unknown; // possible pointer, guid, or reserved space.
+    __int64 unknown; // possible pointer, guid, or reserved space.
 
 	// counts for mdl_ and stgs assets, normally just one but can be multiples.
-    uint16_t modelCount;
-    uint16_t settingsCount;
+    short modelCount;
+    short settingsCount;
 
 	// size of the external data.
-    uint32_t externalDataSize;
+    int externalDataSize;
 
 	// these can all point to a group of guids and not one singular one.
-    RPakPtr modelGuid;
-	RPakPtr effectGuid;
-    RPakPtr settingsGuid;
+    RPakPtr pModels;
+	RPakPtr pEffects;
+    RPakPtr pSettings;
 
 	// data that is stored outside of the raw rseq.
-    RPakPtr externalData;
+    RPakPtr pExternalData;
 };
 
 struct SubtitleHeader
