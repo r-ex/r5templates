@@ -1254,18 +1254,18 @@ struct ASeqHeaderV71
     RPakPtr pData; // pointer to raw rseq.
     RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>; // pointer to debug name, placed before raw rseq normally.
 
-	// this can point to a group of guids and not one singular one.
-	RPakPtr pModels;
-	int modelCount; // to be verified on v7
+	__int64 unknown; // possible pointer, guid, or reserved space.
+
+	// counts for mdl_ and stgs assets, normally just one but can be multiples.
+    short modelCount;
+    short settingsCount;
 
 	// size of data that is not locally in the rseq.
 	int externalDataSize;
 
-	// this can point to a group of guids and not one singular one.
-	RPakPtr pSettings;
-	int settingsCount;
-
-    int reserved1; // assumed
+   // these can all point to a group of guids and not one singular one.
+    RPakPtr pModels;
+    RPakPtr pSettings;
 
 	// pointer to data stored outside of the raw rseq.
     RPakPtr pExternalData;

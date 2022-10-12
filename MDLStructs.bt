@@ -238,16 +238,16 @@ struct mstudioanimdesc_t_v54_v121
 
 	int sectionindex;
 
-    int unk; // what
+    int unk; // what, obviously section related as it's wedged between sectionindex and sectiom frames
 
     int sectionframes; // number of frames used in each fast lookup section, zero if not used
 
-    
+    int unk1[4];
 
-    int unk1; // Padding
-    int unk2; // Padding
-    int unk3; // SomeDataOffset
-    int unk4; // SomeDataOffset
+    //int unk1; // Padding
+    //int unk2; // Padding
+    //int unk3; // SomeDataOffset
+    //int unk4; // SomeDataOffset
 
     // it seems like there's another int here but I'm unsure
 };
@@ -586,8 +586,7 @@ struct mstudioseqdesc_t_v54
     int unk1;
 
     int unkindex;
-
-    int unk2;
+    int unkcount;
 };
 
 struct mstudioautolayer_t_v54
@@ -613,23 +612,24 @@ struct mstudioevent_t_v54
 {
 	float cycle;
 	int	event;
-	eventtype type; // this will be 0 if old style I'd imagine
+	int type <read=ReadEventFlags(this)>; // this will be 0 if old style I'd imagine
 	char options[256];
 
-	int szeventindex <read=ReadString(startof(parentof(this)) + this)>;
+	int szeventindex <read=ReadString(startof(this) + this - 268)>;
 };
 
 // rseq v10
-struct mstudioevent_t_v54_122
+struct mstudioevent_t_v54_v122
 {
 	float cycle;
 	int	event;
-	eventtype type; // this will be 0 if old style I'd imagine
-	char options[256]; // this is the only difference compared to normal v54
+	int type <read=ReadEventFlags(this)>; // this will be 0 if old style I'd imagine
 
     int unk;
 
-	int szeventindex <read=ReadString(startof(parentof(this)) + this)>;
+	char options[256]; // this is the only difference compared to normal v54
+
+	int szeventindex <read=ReadString(startof(this) + this - 272)>;
 };
 
 struct blendgroup_t_v54
@@ -737,4 +737,18 @@ struct mstudioactivitymodifier_t_v53
 	int sznameindex <read=ReadString(startof(this) + this)>;
 
     int unk; // 0 or 1 observed.
+};
+
+struct unkseqdata_t
+{
+    // generally 0-1
+    float unkfloat;
+
+    int unk;
+
+    // quaternion mayhaps
+    float unkfloat1;
+    float unkfloat2;
+    float unkfloat3;
+    float unkfloat4;
 };

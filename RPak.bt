@@ -177,9 +177,9 @@ for(i = 0; i < guidDescClumpCount; ++i)
 
     for(d = 0; d < guidDescCount; d++)
     {
-        FSeek(pageoffsets[GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Index] + GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Offset);
+        //FSeek(pageoffsets[GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Index] + GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Offset);
 
-        RPakGuidRef guid <hidden=true>;
+        //RPakGuidRef guid <hidden=true>;
     }
 }
 
@@ -208,7 +208,6 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 
     if( AssetEntries[i].Magic == "efct" )
     {
-
         struct {
             
             // literally cry about it
@@ -378,7 +377,9 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         if(matlcpuheader.size)
         {
             FSeek(pageoffsets[matlcpuheader.pData.Index] + matlcpuheader.pData.Offset);
-            MatlCPUData_V12 cpudata;
+            struct {
+                char data[matlcpuheader.size];
+            } cpudata;
         }
     }
     else if( AssetEntries[i].Magic == "shds" )
@@ -418,11 +419,11 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     {
         if(AssetEntries[i].SubHeaderSize == 80) // v8
             ModelHeaderV8 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-        if(AssetEntries[i].SubHeaderSize == 120) // v9 - v12
+        else if(AssetEntries[i].SubHeaderSize == 120) // v9 - v12
             ModelHeaderV9 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-        if(AssetEntries[i].SubHeaderSize == 104) // v12.1 - v12.2
+        else if(AssetEntries[i].SubHeaderSize == 104) // v12.1 - v12.2
             ModelHeaderV121 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-        if(AssetEntries[i].SubHeaderSize == 128) // v13 - v15
+        else if(AssetEntries[i].SubHeaderSize == 128) // v13 - v15
             ModelHeaderV13 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
         GTPTR(mdlhdr.pRMDL);
@@ -437,7 +438,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         GTPTR(mdlhdr.pModelData);
         int modeldata;
 
-        if(mdlhdr.pRRIG.Index || mdlhdr.pRRIG.Offset)
+        if(mdlhdr.rrigCount)
         {
             GTPTR(mdlhdr.pRRIG);
             struct {
@@ -445,7 +446,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             } rrigGUIDs;
         }
 
-        if(mdlhdr.pRSEQ.Index || mdlhdr.pRSEQ.Offset)
+        if(mdlhdr.rseqCount)
         {
             GTPTR(mdlhdr.pRSEQ);
             struct {
@@ -461,7 +462,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         GTPTR(rrighdr.pRRIG);
         studiohdr_t rrig <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
 
-        if(rrighdr.pRSEQ.Index || rrighdr.pRSEQ.Offset)
+        if(rrighdr.rseqCount)
         {
             GTPTR(rrighdr.pRSEQ);
             struct {
@@ -585,49 +586,73 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         }
 
     }
-    /*else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 10 )
+    else if( AssetEntries[i].Magic == "aseq")
     {
-        ASeqHeaderV10 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        if(AssetEntries[i].SubHeaderSize == 48)
+            ASeqHeaderV7 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        else if(AssetEntries[i].SubHeaderSize == 56)
+            ASeqHeaderV71 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        else if(AssetEntries[i].SubHeaderSize == 64)
+            ASeqHeaderV10 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
         GTPTR(anhdr.pData);
 
+        // this is just way more compact and I have all the math done
         struct
         {
-            #include "./RSEQ/rseq_v10.bt" // this is just way more compact and I have all the math done     
+            if(AssetEntries[i].SubHeaderSize == 48)
+            {
+                #include "./RSEQ/rseq_v7.bt"
+            }
+            else if(AssetEntries[i].SubHeaderSize == 56)
+            {
+                #include "./RSEQ/rseq_v71.bt"
+            }
+            else if(AssetEntries[i].SubHeaderSize == 64)
+            {
+                #include "./RSEQ/rseq_v10.bt"
+            }
         } an;
 
-        GTPTR(anhdr.pExternalData);
-        struct {
-            char data[anhdr.externalDataSize];
-        } externaldata;
+        if(anhdr.modelCount)
+        {
+            GTPTR(anhdr.pModels);
+            struct {
+                uint64_t modelGUID[anhdr.modelCount] <read=Str("%s - %LX", "mdl_", this)>;
+            } modelGUIDs;
+        }
+
+        if(anhdr.settingsCount)
+        {
+            GTPTR(anhdr.pSettings);
+            struct {
+                uint64_t stgsGUID[anhdr.settingsCount] <read=Str("%s - %LX", "stgs", this)>;
+            } stgsGUIDs;
+        }
+        
+        if(AssetEntries[i].SubHeaderSize >= 64)
+        {
+            if(anhdr.pEffects.Index || anhdr.pEffects.Offset)
+            {
+                GTPTR(anhdr.pEffects);
+                struct {
+                    uint64_t efctGUID[1]; // can't get the actual amount unfortunately unless we wanna read through the seq
+                } efctGUIDs;
+            }
+        }
+
+        if(AssetEntries[i].SubHeaderSize >= 56)
+        {
+            if(anhdr.externalDataSize)
+            {
+                GTPTR(anhdr.pExternalData);
+                struct {
+                    char data[anhdr.externalDataSize];
+                } externaldata;
+            }
+        }
+            
     }
-    else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 7 && AssetEntries[i].SubHeaderSize == 56)
-    {
-        ASeqHeaderV71 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-
-        GTPTR(anhdr.pData);
-
-        struct
-        {
-            #include "./RSEQ/rseq_v71.bt" // this is just way more compact and I have all the math done     
-        } an;
-
-        GTPTR(anhdr.pExternalData);
-        struct {
-            char data[anhdr.externalDataSize];
-        } externaldata;
-    }
-    else if( AssetEntries[i].Magic == "aseq" && AssetEntries[i].Version == 7 )
-    {
-        ASeqHeaderV7 anhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-
-        GTPTR(anhdr.pData);
-
-        struct
-        {
-            #include "./RSEQ/rseq_v7.bt" // this is just way more compact and I have all the math done     
-        } an;
-    }*/
     else if( AssetEntries[i].Magic == "mt4a" )
     {
         MaterialForAspect mt4a;
