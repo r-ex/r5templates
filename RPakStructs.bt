@@ -716,21 +716,18 @@ struct TextureHeader
 	uint64_t guid <format=hex>;
 	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
 
-	uint16_t width <fgcolor=cPurple>;
-	uint16_t height <fgcolor=cYellow>;
-
-    // possible int16
-    uint16_t Un;
-	//uint8_t Un1;
-	//uint8_t Un2;
+    
+	short width <fgcolor=cPurple>;
+	short height <fgcolor=cYellow>;
+    short depth;
 
     uint16_t format;  // Maps to a DXGI format
 
 	uint32_t dataSize;	// This is the total amount of image data across all banks
 
-	uint8_t compressionType; // 8 PS4, 9 Switch
+	byte compressionType; // 8 PS4, 9 Switch
 
-	uint8_t optStreamedMipCount; // r5 only
+	byte optStreamedMipCount; // r5 only
 
 	uint8_t arraySize;
 	uint8_t layerCount;
@@ -886,6 +883,8 @@ struct UIImageUV
 //
 // MODELS 
 //
+// s0 to s1
+// size of 80
 struct ModelHeaderV8
 {
 	// IDST data
@@ -910,7 +909,7 @@ struct ModelHeaderV8
 
 	// size of the data kept in starpak
 	uint32_t unkDataSize;
-	uint32_t or ; // full size of the starpak entry, aligned to 4096.
+	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
 
 	// number of anim sequences directly associated with this model
 	uint32_t rseqCount;
@@ -919,6 +918,8 @@ struct ModelHeaderV8
     uint64_t unk1;
 };
 
+// s2 to s6
+// size of 120
 struct ModelHeaderV9
 {
 	// IDST data
@@ -960,7 +961,8 @@ struct ModelHeaderV9
 	uint64_t unk6;
 };
 
-// season 7
+// s7 to s11
+// size of 104
 struct ModelHeaderV121
 {
 	// IDST data
@@ -981,10 +983,8 @@ struct ModelHeaderV121
 
 	RPakPtr pModelData <comment=".vtx and .vvd combined. preload data for static props only">;
 
-	// pointer to data for the model's arig guid(s?)
+	// pointer to data for the model's arig guids
 	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
-
-	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
 	uint32_t rrigCount;
 
 	// size of the data kept in starpak
@@ -993,13 +993,15 @@ struct ModelHeaderV121
 	
     uint64_t unk3;
 
-    // number of anim sequences directly associated with this model
+    // anim sequences directly associated with this model
 	uint32_t rseqCount;
 	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
 
 	uint64_t unk6;
 };
 
+// s11 to current
+// size of 128
 struct ModelHeaderV13
 {
 	// IDST data

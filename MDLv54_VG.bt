@@ -26,6 +26,8 @@ typedef enum <uint64> {
     
 } VGFLAGS;
 
+#define MAX_NUM_BONES_PER_VERT 3
+
 struct VGHeader
 {
 	char id[4] <fgcolor=cLtGreen>;		// 0x47567430	'0tvg'
@@ -68,7 +70,7 @@ struct VGHeader
 
 struct VGMesh
 {
-	__int64 flags <fgcolor=cLtGreen, format=hex>;	// mesh flags
+	__int64 flags <fgcolor=cLtGreen, read=Str("0x%LX", this)>;	// mesh flags
 	int vertexOffset;			// start offset for this mesh's vertices
 	int vertCacheSize;		    // number of bytes used from the vertex buffer
 	int vertexCount;			// number of vertices
@@ -187,8 +189,20 @@ string UnpackNormal(DWORD _Value)
 
 struct PackedVertexWeights
 {
-	short BlendWeights[2];
-    byte BlendIds[4];
+	short BlendWeights[2] <read=Str("%f", this /  32768.5)>; // haha jk.. unless?
+    byte BlendIds[4]; // last two flags?
+};
+
+struct extendedWeight
+{
+    byte unk[4];
+};
+
+struct mstudioboneweight_t
+{
+	float	weight[MAX_NUM_BONES_PER_VERT];
+	char	bone[MAX_NUM_BONES_PER_VERT]; 
+	byte	numbones;
 };
 
 struct VertexColor
@@ -207,7 +221,7 @@ if( vhdr.id != "0tVG" || vhdr.version != 1 )
 local uint64 i = 0;
 
 FSeek(vhdr.boneRemapOffset);
-char BoneRemaps[vhdr.boneRemapCount];
+ubyte BoneRemaps[vhdr.boneRemapCount];
 
 FSeek(vhdr.lodOffset);
 ModelLODHeader_t lod[vhdr.lodCount]<bgcolor=cLtGray>;
@@ -238,7 +252,7 @@ for(i = 0; i < vhdr.meshCount; ++i)
 
     // Indices
 
-    FSeek(vhdr.indexOffset + mesh.indexOffset);
+    FSeek(vhdr.indexOffset + (mesh.indexOffset * sizeof(short)));
 
     struct
     {
@@ -266,6 +280,9 @@ for(i = 0; i < vhdr.meshCount; ++i)
             if(mesh.flags & 0x10)
                 VertexColor color;
 
+            if(mesh.flags & 0x200000000)
+                Vector2 UVLayer;
+
             Vector2 m_vecTexCoord;
 
         } vtx[mesh.vertexCount];
@@ -278,18 +295,18 @@ for(i = 0; i < vhdr.meshCount; ++i)
     
         struct
         {
-            char data[mesh.extendedWeightsSize];
+            extendedWeight data[mesh.extendedWeightsSize / 4];
         } extendedWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
     }
 
     if(mesh.externalWeightsCount != 0)
     {
-        FSeek(vhdr.externalWeightsOffset + mesh.externalWeightsOffset);
+        FSeek(vhdr.externalWeightsOffset + (mesh.externalWeightsOffset * sizeof(mstudioboneweight_t)));
     
         struct
         {
-            char data[mesh.externalWeightsCount * 0x10];
-        } externalWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
+            mstudioboneweight_t m_BoneWeights[mesh.externalWeightsCount];
+        } externalWeightsData<read=Str("%i weights", sizeof(this.m_BoneWeights)  / 16), bgcolor=cDkGreen>;
     }
     
     // Strips
