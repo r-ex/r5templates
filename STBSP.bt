@@ -41,7 +41,7 @@ struct ResidentPage
 {
     uint64 dataOffset;
     int dataSize;
-    int unk2;
+    float unk2;
     short word10;
     short word12;
     short word14;
@@ -54,7 +54,7 @@ enum LUMPS // lump types??
  LUMP_MATERIAL_INFO,
  LUMP_UNK2,
  LUMP_UNK3,
- LUMP_UNK4,
+ LUMP_RESIDENT_PAGES,
  LUMP_UNK5
 };
 
@@ -92,15 +92,27 @@ if(hdr.lumps[ LUMP_UNK3 ].offset != 0)
     char lump3buf[2 * hdr.lumps[ LUMP_UNK3 ].count];
 }
 
-if(hdr.lumps[ LUMP_UNK4 ].offset != 0)
+if(hdr.lumps[ LUMP_RESIDENT_PAGES ].offset != 0)
 {
-    FSeek(hdr.lumps[ LUMP_UNK4 ].offset);
-    ResidentPage pages[hdr.lumps[ LUMP_UNK4 ].count];
+    FSeek(hdr.lumps[ LUMP_RESIDENT_PAGES ].offset);
+    ResidentPage pages[hdr.lumps[ LUMP_RESIDENT_PAGES ].count] <read=Str("%i, cvg: %.14f", this.dataSize, this.unk2)>;
+
+
+    if(hdr.lumps[ LUMP_UNK5 ].offset != 0)
+    {
+        
+        struct {
+            for(i = 0; i < hdr.lumps[ LUMP_RESIDENT_PAGES ].count; ++i)
+            {
+                FSeek(hdr.lumps[ LUMP_UNK5 ].offset + pages[i].dataOffset);
+                struct {
+                    char lump5buf[pages[i].dataSize];
+                } pagedata;
+            }
+        } lump5;
+
+    }
 }
 
-if(hdr.lumps[ LUMP_UNK5 ].offset != 0)
-{
-    FSeek(hdr.lumps[ LUMP_UNK5 ].offset);
-    char lump5buf[hdr.lumps[ LUMP_UNK5 ].count];
-}
+
 
