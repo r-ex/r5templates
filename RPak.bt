@@ -144,7 +144,7 @@ for(i = pageStart; i < pakhdr.PageCount; ++i)
 
 }
 
-/*if(pakhdr.DescriptorCount < 200000)
+if(pakhdr.DescriptorCount < 200000)
 {
     // points to every instance of a "page idx, page offset" pointer within page data
     for(i = 0; i < pakhdr.DescriptorCount; ++i)
@@ -164,24 +164,24 @@ else
         RpakDescPointer desc <hidden=true>;
     }
 
-}*/
+}
 
 
 local int guidDescCount;
 
 // points to every instance of an asset guid reference
-/*for(i = 0; i < guidDescClumpCount; ++i)
+for(i = 0; i < guidDescClumpCount; ++i)
 {
     
     guidDescCount = sizeof(GuidDescriptors.AssetGuidDescriptorGroup[i]) / sizeof(RpakDescriptor);
 
     for(d = 0; d < guidDescCount; d++)
     {
-        //FSeek(pageoffsets[GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Index] + GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Offset);
+        FSeek(pageoffsets[GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Index] + GuidDescriptors.AssetGuidDescriptorGroup[i].GuidDescriptor[d].Offset);
 
-        //RPakGuidRef guid <hidden=true>;
+        RPakGuidRef guid <hidden=true>;
     }
-}*/
+}
 
 string ReadTextureName(TextureHeader& th)
 {
