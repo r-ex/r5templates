@@ -206,7 +206,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 {
     GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
 
-    if( AssetEntries[i].Magic == "efct" )
+    if( AssetEntries[i].Magic == "efct" && AssetEntries[i].Version == 2)
     {
         struct {
             
@@ -389,11 +389,11 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         if(AssetEntries[i].Version == 11)
             ShaderSetHeaderV11 ssh <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
     }
-    else if( AssetEntries[i].Magic == "shdr" )
+    else if( AssetEntries[i].Magic == "shdr" && AssetEntries[i].Version <= 12)
     {
         if(AssetEntries[i].Version == 8)
             ShaderHeaderV8 shdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-        if(AssetEntries[i].Version >= 12)
+        if(AssetEntries[i].Version == 12)
             ShaderHeaderV12 shdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
         GTPTR(shdr.pUnkData);
@@ -435,8 +435,11 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             int phydata;
         }
 
-        GTPTR(mdlhdr.pModelData);
-        int modeldata;
+        if(mdlhdr.pModelData.Index || mdlhdr.pModelData.Offset)
+        {
+            GTPTR(mdlhdr.pModelData);
+            int modeldata;
+        }       
 
         if(mdlhdr.rrigCount)
         {

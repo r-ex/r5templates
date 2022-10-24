@@ -11,20 +11,17 @@
 //   History: 
 //------------------------------------------------
 #include "MiscStructs.bt"
+#include "VGStructs.bt"
 typedef unsigned char uint8_t;
 typedef uint16 uint16_t;
 typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 
-typedef enum <uint64> {
-    VG_POSITION = 0x1,
-    VG_PACKED_POSITION = 0x2,
-    VG_VERTEX_COLOR = 0x10,
-
-    VG_PACKED_WEIGHTS = 0x5000,
-    VG_UV_LAYER = 0x200000000, // what
-    
-} VGFLAGS;
+#define VG_POSITION         0x1
+#define VG_PACKED_POSITION  0x2
+#define VG_VERTEX_COLOR     0x10
+#define VG_PACKED_WEIGHTS   0x5000
+#define VG_UV_LAYER         0x200000000 // what
 
 #define MAX_NUM_BONES_PER_VERT 3
 
@@ -71,143 +68,29 @@ struct VGHeader
 struct VGMesh
 {
 	__int64 flags <fgcolor=cLtGreen, read=Str("0x%LX", this)>;	// mesh flags
+
 	int vertexOffset;			// start offset for this mesh's vertices
 	int vertCacheSize;		    // number of bytes used from the vertex buffer
 	int vertexCount;			// number of vertices
+
 	int unk1;
+
 	int extendedWeightsOffset;	// start offset for this mesh's "extended weights"
 	int extendedWeightsSize;    // size or count of extended weights
+
 	int indexOffset;			// start offset for this mesh's "indices"
 	int indexCount;				// number of indices
+
 	int externalWeightsOffset;	// seems to be an offset into the "external weights" buffer for this mesh
 	int externalWeightsCount;   // seems to be the number of "external weights" that this mesh uses
+
 	int stripsOffset;			// Index into the strips structs
 	int stripsCount;
+
 	int Int15;
 	int Int16;
 	int Int17;
 	int Int18;
-};
-
-enum <ubyte> StripHeaderFlags_t
-{
-	STRIP_IS_TRILIST		= 0x01,
-	STRIP_IS_QUADLIST_REG	= 0x02,		// Regular sub-d quads
-	STRIP_IS_QUADLIST_EXTRA = 0x04		// Extraordinary sub-d quads
-};
-
-
-// A strip is a piece of a stripgroup which is divided by bones 
-struct StripHeader_t
-{
-	int numIndices;
-	int indexOffset;
-
-	int numVerts;    
-	int vertOffset;
-
-	short numBones;
-
-	StripHeaderFlags_t flags;
-
-	int numBoneStateChanges;
-	int boneStateChangeOffset;
-
-	// MDL Version 49 and up only
-	int numTopologyIndices;
-	int topologyOffset;
-};
-
-struct ModelLODHeader_t
-{
-	uint16 meshIndex;
-	uint16 meshCount;
-	float distance;
-};
-
-struct PackedPosition
-{
-    DWORD dword[2];
-};
-
-string UnpackPosition(PackedPosition& pos)
-{
-    	//x = ((_Value[0] & 0x1FFFFF) * 0.0009765625) - 1024.0;
-		//y = ((((_Value[1] & 0x3FFu) << 11) + (_Value[0] >> 21)) * 0.0009765625) - 1024.0;
-		//z = ((_Value[1] >> 10) * 0.0009765625) - 2048.0;
-    local float x = ((pos.dword[0] & 0x1FFFFF) * 0.0009765625) - 1024.0;
-    local float y = ((((pos.dword[1] & 0x3FF) << 11) + (pos.dword[0] >> 21)) * 0.0009765625) - 1024.0;
-    local float z = ((pos.dword[1] >> 10) * 0.0009765625) - 2048.0;
-    return Str("< %f, %f, %f >", x, y, z);
-};
-
-string UnpackNormal(DWORD _Value)
-{
-		local float x, y, z;
-
-		local float v87 = ((2 * _Value) >> 30);
-		local int v88 = 255;
-		if (((8 * _Value) >> 31) != 0.0)
-			v88 = -255;
-		local float v89 = (float)v88;
-		local float v90 = ((_Value << 13) >> 23) + -256.0;
-		local float v91 = ((16 * _Value) >> 23) + -256.0;
-		local float v92 = ((v91 * v91) + (255.0 * 255.0)) + (v90 * v90);
-
-		local float v93 = Sqrt(v92);
-		local int v97 = 0;
-
-		local float v1, v2, v3;
-
-		v1 = v90 * (1.0 / v93);
-		v2 = v89 * (1.0 / v93);
-		v3 = v91 * (1.0 / v93);
-		if (v87 == 1.0)
-			v97 = -1;
-		else
-			v97 = 0;
-		if (v87 == 2.0)
-		{
-			x = v3;
-			y = v1;
-			z = v2;
-		}
-		else
-		{
-			x = v2;
-			y = v3;
-			z = v1;
-		}
-		if (!v97)
-		{
-			v1 = x;
-			v2 = y;
-			v3 = z;
-		}
-		return Str("< %f, %f, %f >", v1, v2, v3);
-};
-
-struct PackedVertexWeights
-{
-	short BlendWeights[2] <read=Str("%f", this /  32768.5)>; // haha jk.. unless?
-    byte BlendIds[4]; // last two flags?
-};
-
-struct extendedWeight
-{
-    byte unk[4];
-};
-
-struct mstudioboneweight_t
-{
-	float	weight[MAX_NUM_BONES_PER_VERT];
-	char	bone[MAX_NUM_BONES_PER_VERT]; 
-	byte	numbones;
-};
-
-struct VertexColor
-{
-    byte r,g,b,a;
 };
 
 VGHeader vhdr;
@@ -230,6 +113,7 @@ struct unkdata
 {
     int64 unk;
     float unk1;
+
     char data[0x24];
 };
 
@@ -268,23 +152,24 @@ for(i = 0; i < vhdr.meshCount; ++i)
         local int vertexCount = mesh.vertexCount;
         struct
         {
-            if(mesh.flags & 1)
+            if(mesh.flags & VG_POSITION)
                 Vector3 pos;
-            else if(mesh.flags & 2)
+            else if(mesh.flags & VG_PACKED_POSITION)
                 PackedPosition pos <read=UnpackPosition>;
 
-            if((mesh.flags & 0x5000) == 0x5000)
+            if(mesh.flags & VG_PACKED_WEIGHTS)
                 PackedVertexWeights weights;
 
             DWORD normal <read=UnpackNormal>; // packed normal
 
-            if(mesh.flags & 0x10)
+            if(mesh.flags & VG_VERTEX_COLOR)
                 VertexColor color;
 
-            if(mesh.flags & 0x200000000)
-                Vector2 UVLayer;
-
             Vector2 m_vecTexCoord;
+
+            // same vector2 from vvc
+            if(mesh.flags & VG_UV_LAYER)
+                Vector2 UVLayer;
 
         } vtx[mesh.vertexCount];
     } vertexData<read=Str("%i bytes, %i verts", sizeof(this.vtx), this.vertexCount), bgcolor=cDkBlue>;
@@ -302,7 +187,7 @@ for(i = 0; i < vhdr.meshCount; ++i)
 
     if(mesh.externalWeightsCount != 0)
     {
-        FSeek(vhdr.externalWeightsOffset + (mesh.externalWeightsOffset * sizeof(mstudioboneweight_t)));
+        FSeek(vhdr.externalWeightsOffset + (mesh.externalWeightsOffset * 16));
     
         struct
         {

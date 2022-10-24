@@ -901,18 +901,14 @@ struct ModelHeaderV8
 
 	RPakPtr pModelData <comment=".vtx and .vvd. preload data for static props only">;
 
-	// pointer to data for the model's arig guid(s?)
+	// pointer to data for the model's arig guid(s)
 	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
+	int rrigCount;
 
-	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
-	uint32_t rrigCount;
+	__int64 modelDataSize; // size of VTX, VVD, and VVC (before rpak baking).
 
-	// size of the data kept in starpak
-	uint32_t unkDataSize;
-	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.
-
-	// number of anim sequences directly associated with this model
-	uint32_t rseqCount;
+	// anim sequences directly associated with this model
+	int rseqCount;
 	RPakPtr pRSEQ;
 
     uint64_t unk1;
@@ -946,9 +942,8 @@ struct ModelHeaderV9
 	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
 	uint32_t rrigCount;
 
-	// size of the data kept in starpak
-	uint32_t unkDataSize;
-	uint32_t alignedStreamingSize; // full size of the starpak entry, aligned to 4096.	
+	uint32_t modelDataSize; // size of VTX, VVD, and VVC (before rpak baking)
+	uint32_t alignedStreamingSize; // full size of the starpak entry (0tVG only), aligned to 4096.
 
     uint64_t unk3;
     uint64_t unk4;
