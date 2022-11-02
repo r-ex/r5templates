@@ -13,6 +13,8 @@
 
 #define MAX_NUM_BONES_PER_VERT 3
 
+typedef ubyte uint8;
+
 enum <ubyte> StripHeaderFlags_t
 {
 	STRIP_IS_TRILIST		= 0x01,
@@ -129,7 +131,7 @@ struct mstudioboneweight_t
 	byte	numbones;
 };
 
-struct VertexColor
+struct VertexColor_t
 {
-    byte r,g,b,a;
+	uint8 r, g, b, a;
 };

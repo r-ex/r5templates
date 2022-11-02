@@ -153,7 +153,7 @@ for(i = 0; i < vhdr.meshCount; ++i)
         struct
         {
             if(mesh.flags & VG_POSITION)
-                Vector3 pos;
+                Vector3 m_vecPosition;
             else if(mesh.flags & VG_PACKED_POSITION)
                 PackedPosition pos <read=UnpackPosition>;
 
@@ -162,8 +162,9 @@ for(i = 0; i < vhdr.meshCount; ++i)
 
             DWORD normal <read=UnpackNormal>; // packed normal
 
+            // vertex color from vvc
             if(mesh.flags & VG_VERTEX_COLOR)
-                VertexColor color;
+                VertexColor_t m_color;
 
             Vector2 m_vecTexCoord;
 

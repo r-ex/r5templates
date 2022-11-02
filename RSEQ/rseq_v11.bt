@@ -16,7 +16,7 @@ local int j = 0;
 local int k = 1;
 local int si = 0;
 
-mstudioseqdesc_t_v54 seqdesc <bgcolor=0xf0b27a, read=Str("%s : %s", ReadString(startof(this) + this.szlabelindex), ReadString(startof(this) + this.szactivitynameindex))>;
+mstudioseqdesc_t_v16 seqdesc <bgcolor=0xf0b27a, read=Str("%s : %s", ReadString(startof(this) + this.szlabelindex), ReadString(startof(this) + this.szactivitynameindex))>;
 
 local int numanims = seqdesc.groupsize[0] * seqdesc.groupsize[1];
 local int numbones = (seqdesc.activitymodifierindex - seqdesc.weightlistindex) / 4;
@@ -34,7 +34,7 @@ if(seqdesc.posekeyindex)
 if(seqdesc.numevents)
 {
     FSeek(startof(seqdesc) + seqdesc.eventindex);
-    mstudioevent_t_v54_v122 seqevent[seqdesc.numevents] <bgcolor=0x21fe7a, read=ReadString(startof(this) + this.szeventindex)>;
+    mstudioevent_t_v16 seqevent[seqdesc.numevents] <bgcolor=0x21fe7a, read=ReadString(startof(this) + this.szeventindex)>;
 }
 
 if(seqdesc.numautolayers)
@@ -47,15 +47,15 @@ FSeek(startof(seqdesc) + seqdesc.weightlistindex);
 float weightlist[numbones] <bgcolor=0xe1f27a>;
 
 FSeek(startof(seqdesc) + seqdesc.activitymodifierindex);
-mstudioactivitymodifier_t_v53 activitymodifier[seqdesc.numactivitymodifiers] <bgcolor=0x119900, read=Str("%s : %i", ReadString(startof(this) + this.sznameindex), this.unk)>;
+mstudioactivitymodifier_t_v16 activitymodifier[seqdesc.numactivitymodifiers] <bgcolor=0x119900, read=Str("%s : %i", ReadString(startof(this) + this.sznameindex), this.unk)>;
 
 FSeek(startof(seqdesc) + seqdesc.animindexindex);
-int blends[seqdesc[si].groupsize[0] * seqdesc[si].groupsize[1]] <bgcolor=0xffff00>;
+uint16 blends[seqdesc[si].groupsize[0] * seqdesc[si].groupsize[1]] <bgcolor=0xffff00>;
 
 for(k = 0; k < numanims; k++)
 {
     FSeek(startof(seqdesc) + blends[k]);
-    mstudioanimdesc_t_v54_v121 animdesc <bgcolor=0xdc7633, read=ReadString(startof(this) + this.sznameindex)>;
+    mstudioanimdesc_t_v16 animdesc <bgcolor=0xdc7633, read=ReadString(startof(this) + this.sznameindex)>;
     
     struct {
         if (!(animdesc[k].flags & STUDIO_ALLZEROS))
@@ -69,7 +69,7 @@ for(k = 0; k < numanims; k++)
                     local int sectionlength = ((animdesc.numframes - 1) / animdesc.sectionframes) + 2;
     
                     FSeek(startof(animdesc[k]) + animdesc[k].sectionindex);
-                    mstudioanimsections_t_v54_v121 sectionindexes[sectionlength] <bgcolor=cLtBlue>;
+                    mstudioanimsections_t_v16 sectionindexes[sectionlength] <bgcolor=cLtBlue>;
         
                     local int nullsections = 0;
 
@@ -123,7 +123,7 @@ for(k = 0; k < numanims; k++)
         if(animdesc[k].numikrules)
         {
             FSeek(startof(animdesc[k]) + animdesc[k].ikruleindex);
-            mstudioikrule_t_v54_new animikrule[animdesc[k].numikrules] <bgcolor=cGreen>;
+            mstudioikrule_t_v16 animikrule[animdesc[k].numikrules] <bgcolor=cGreen>;
         }
     
         /*for(j = -animdesc.numikrules; j < 0; j++)

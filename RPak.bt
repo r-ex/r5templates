@@ -199,6 +199,7 @@ string ReadSubtHashEntry(SubtHashEntry& sh, SubtitleHeader& subt)
     return ReadString(pageoffsets[subt.pEntries.Index] + subt.pEntries.Offset + sh.stringoffset);
 };
 local uint64 j = 0;
+local int z = 0;
 local int numbones = 0;
 local int numtextures = 0;
 
@@ -425,11 +426,31 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             ModelHeaderV121 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
         else if(AssetEntries[i].SubHeaderSize == 128) // v13 - v15
             ModelHeaderV13 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        else if(AssetEntries[i].SubHeaderSize == 96) // v13 - v15
+            ModelHeaderV16 mdlhdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
 
         GTPTR(mdlhdr.pRMDL);
-        studiohdr_t rmdl <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
+        if(AssetEntries[i].SubHeaderSize == 80 || AssetEntries[i].SubHeaderSize == 120) // v8 - v12
+            studiohdr_t rmdl <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
+        else if(AssetEntries[i].SubHeaderSize == 104 || (AssetEntries[i].Version > 12 && AssetEntries[i].Version < 16)) // v12.1 - v15
+            studiohdr_t_v121 rmdl <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
+        else if(AssetEntries[i].Version >= 16) // v16
+            rstudiohdr_t_v16 rmdl <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
 
-        if(mdlhdr.pPHY.Index || mdlhdr.pPHY.Offset)
+
+        /*Assert(rmdl.unk_v16 < 1, "unk_v16");
+        Assert(rmdl.unk1_v16 < 2, "unk1_v16");
+
+        for(z = 0; z < 5; z++)
+            Assert(!rmdl.unkfill[z], "unkfill");
+
+        //Assert(!rmdl.unk5_v16, "unk5_v16");
+        //Assert(!rmdl.unk6_v16, "unk6_v16");
+        Assert(!rmdl.unk7_v16, "unk7_v16");
+        Assert(!rmdl.unk8_v16, "unk8_v16");
+        Assert(!rmdl.unk8_v16, "unk9_v16");*/
+
+        if(AssetEntries[i].Version < 16 && (mdlhdr.pPHY.Index || mdlhdr.pPHY.Offset))
         {
             GTPTR(mdlhdr.pPHY);
             int phydata;
@@ -457,13 +478,33 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             } rseqGUIDs;
         }
 
+        if(AssetEntries[i].Version >= 16)
+        {
+            FSeek(pageoffsets[AssetEntries[i].RawDataPageIndex] + AssetEntries[i].RawDataPageOffset);
+            ModelCPUHeader modelcpuheader <read=Str("Model Length: %i Size: %i", this.length, this.size)>;
+
+            if(modelcpuheader.size)
+            {
+                FSeek(pageoffsets[modelcpuheader.pData.Index] + modelcpuheader.pData.Offset);
+                struct {
+                    char data[modelcpuheader.size];
+                } cpudata;
+            }
+        }
+
     }
     else if( AssetEntries[i].Magic == "arig" )
     {
-        AnimRigHeaderV4 rrighdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
-        
+        if(AssetEntries[i].Version == 4)
+            AnimRigHeaderV4 rrighdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+        else if(AssetEntries[i].Version == 5)
+            AnimRigHeaderV5 rrighdr <read=ReadString(pageoffsets[this.pName.Index] + this.pName.Offset)>;
+
         GTPTR(rrighdr.pRRIG);
-        studiohdr_t rrig <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
+        if(AssetEntries[i].Version == 4)
+            studiohdr_t rrig <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
+        else if(AssetEntries[i].Version == 5)
+            rstudiohdr_t_v16 rrig <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
 
         if(rrighdr.rseqCount)
         {
@@ -611,9 +652,13 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             {
                 #include "./RSEQ/rseq_v71.bt"
             }
-            else if(AssetEntries[i].SubHeaderSize == 64)
+            else if(AssetEntries[i].SubHeaderSize == 64 && AssetEntries[i].Version == 10)
             {
                 #include "./RSEQ/rseq_v10.bt"
+            }
+            else if(AssetEntries[i].SubHeaderSize == 64 && AssetEntries[i].Version == 11)
+            {
+                #include "./RSEQ/rseq_v11.bt"
             }
         } an;
 

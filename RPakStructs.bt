@@ -146,7 +146,9 @@ struct RpakAssetEntry
 
 	uint32 UsesStartIndex; // page index for the list of the assets that this asset uses
 	uint32 RelationsCount;  // number of relations
-	uint32 UsesCount;      // number of assets that are used/referenced by guid
+	uint16 UsesCount;      // number of assets that are used/referenced by guid
+
+    uint16 unk; // in newer V8 there is an extra var here.
 
 	uint32 SubHeaderSize;
 	uint32 Version;
@@ -326,7 +328,8 @@ struct MaterialHeaderV12
 	short unknown2; // reserved texture count?
 
 	__int64 reserved; // nothing is ever placed here (as I've seen so far), probably reserved for stuff on load.
-
+                      // v21: observed '2' here
+                    
 	// seems to be 0xFBA63181 for loadscreens
 	int unknown3; // name carried over from apex struct.
 	int unknown4; // name carried over from apex struct.
@@ -1039,6 +1042,51 @@ struct ModelHeaderV13
 	uint64_t unk6;
 };
 
+struct ModelHeaderV16
+{
+	// IDST data
+	RPakPtr pRMDL <comment=".rmdl">;
+
+	// model path
+	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
+	RPakPtr pName <read=ReadString(pageoffsets[this.Index] + this.Offset)>;
+
+    __int64 unk1;
+
+    // phy is cpu data now?
+	//RPakPtr pPHY <comment=".phy">;
+
+	RPakPtr pModelData <comment=".vtx and .vvd combined. preload data for static props only">;
+
+    // pointer to data for the model's arig guids
+	RPakPtr pRRIG <comment="pointer to the guids of the anim rigs associated with this model">;
+
+	// this is a guess based on the above ptr's data. i think this is == to the number of guids at where the ptr points to
+	uint32_t rrigCount;
+
+	int alignedStreamingSize; // mayb
+
+    Vector3 unkvec; // mins
+    Vector3 unkvec1; // maxs
+
+    uint16_t unk1; // count for unk2 if unk2 is a ptr?
+    uint16_t rseqCount; // number of anim sequences directly associated with this model
+
+    int unk;
+
+    // pointer to data for the model's arig guids
+	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
+
+	__int64 unk2;
+};
+
+struct ModelCPUHeader
+{
+    RPakPtr pData; // points to the rest of the cpu data. maybe for colour?
+	int size;
+    int length;
+};
+
 struct AnimRigHeaderV4
 {
 	RPakPtr pRRIG;
@@ -1047,6 +1095,22 @@ struct AnimRigHeaderV4
 	int unk;
 
 	int rseqCount;
+	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
+
+	int64 unk1;
+};
+
+struct AnimRigHeaderV5
+{
+	RPakPtr pRRIG;
+    RPakPtr pName;
+
+	short unk;
+
+	short rseqCount;
+
+    int unk2;
+
 	RPakPtr pRSEQ <comment="pointer to the guids of the rseqs associated with this model">;
 
 	int64 unk1;
