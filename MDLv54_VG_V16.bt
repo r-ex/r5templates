@@ -1,0 +1,223 @@
+//------------------------------------------------
+//--- 010 Editor v12.0.1 Binary Template
+//
+//      File: 
+//   Authors: 
+//   Version: 
+//   Purpose: 
+//  Category: 
+// File Mask: 
+//  ID Bytes: 
+//   History: 
+//------------------------------------------------
+#include "MiscStructs.bt"
+typedef unsigned char uint8_t;
+typedef uint16 uint16_t;
+typedef uint32 uint32_t;
+typedef uint64 uint64_t;
+
+typedef enum <uint64> {
+    VG_POSITION = 0x1,
+    VG_PACKED_POSITION = 0x2,
+    VG_VERTEX_COLOR = 0x10,
+
+    VG_PACKED_WEIGHTS = 0x5000,
+    VG_UV_LAYER = 0x200000000, // what
+    
+} VGFLAGS;
+
+struct VGHeader
+{
+    short unk0;
+    short unk2;
+    int unk4;
+    int nummeshes;
+    int meshindex;
+};
+
+struct RMdlVGIndexCountPacked
+{
+	uint32 count : 24;
+	uint32 type : 8;
+};
+
+struct VGMesh
+{
+	uint64 flags <fgcolor=cLtGreen, format=hex>;
+    int vertexCount;
+    short vertexSize;
+    short unk;
+    int indexOffset;
+    RMdlVGIndexCountPacked indexCount;
+    int vertexOffset;
+    int vertexBufferSize;
+
+    int weightsOffset;
+    int weightsCount;
+
+    int unkOffset;
+    int unkCount;
+};
+
+struct VGLod
+{
+    char unk[4];
+    uint32 dataSize;
+    short meshCount;
+    byte unk1; // both of these bytes line up with the LOD index
+    byte unk2;
+    float distance;
+    uint64 meshOffset;
+};
+
+struct VGStrip
+{
+	uint32 IndexCount;
+	uint32 IndexOffset;
+
+	uint32 VertexCount;
+	uint32 VertexOffset;
+
+	uint16 NumBones;
+
+	char StripFlags;
+
+	char Padding[0x10];
+};
+
+
+struct PackedPosition
+{
+    DWORD dword[2];
+};
+
+string UnpackPosition(PackedPosition& pos)
+{
+    	//x = ((_Value[0] & 0x1FFFFF) * 0.0009765625) - 1024.0;
+		//y = ((((_Value[1] & 0x3FFu) << 11) + (_Value[0] >> 21)) * 0.0009765625) - 1024.0;
+		//z = ((_Value[1] >> 10) * 0.0009765625) - 2048.0;
+    local float x = ((pos.dword[0] & 0x1FFFFF) * 0.0009765625) - 1024.0;
+    local float y = ((((pos.dword[1] & 0x3FF) << 11) + (pos.dword[0] >> 21)) * 0.0009765625) - 1024.0;
+    local float z = ((pos.dword[1] >> 10) * 0.0009765625) - 2048.0;
+    return Str("< %f, %f, %f >", x, y, z);
+};
+
+string UnpackNormal(DWORD _Value)
+{
+		local float x, y, z;
+
+		local float v87 = ((2 * _Value) >> 30);
+		local int v88 = 255;
+		if (((8 * _Value) >> 31) != 0.0)
+			v88 = -255;
+		local float v89 = (float)v88;
+		local float v90 = ((_Value << 13) >> 23) + -256.0;
+		local float v91 = ((16 * _Value) >> 23) + -256.0;
+		local float v92 = ((v91 * v91) + (255.0 * 255.0)) + (v90 * v90);
+
+		local float v93 = Sqrt(v92);
+		local int v97 = 0;
+
+		local float v1, v2, v3;
+
+		v1 = v90 * (1.0 / v93);
+		v2 = v89 * (1.0 / v93);
+		v3 = v91 * (1.0 / v93);
+		if (v87 == 1.0)
+			v97 = -1;
+		else
+			v97 = 0;
+		if (v87 == 2.0)
+		{
+			x = v3;
+			y = v1;
+			z = v2;
+		}
+		else
+		{
+			x = v2;
+			y = v3;
+			z = v1;
+		}
+		if (!v97)
+		{
+			v1 = x;
+			v2 = y;
+			v3 = z;
+		}
+		return Str("< %f, %f, %f >", v1, v2, v3);
+};
+
+struct PackedVertexWeights
+{
+	short BlendWeights[2] <read=Str("%f", this /  32768.5)>; // haha jk.. unless?
+    byte BlendIds[4]; // last two flags?
+};
+
+struct extendedWeight
+{
+    byte unk[4];
+};
+
+struct mstudioboneweight_t
+{
+	float	weight[MAX_NUM_BONES_PER_VERT];
+	char	bone[MAX_NUM_BONES_PER_VERT]; 
+	byte	numbones;
+};
+
+struct VertexColor
+{
+    ubyte r,g,b,a;
+};
+
+
+local int i = 0;
+
+VGHeader vhdr;
+FSeek(startof(vhdr) + 12 + vhdr.meshindex);
+
+
+VGMesh mesh[vhdr.nummeshes];
+
+
+for( i = 0; i < vhdr.nummeshes; ++i)
+{
+    FSeek(startof(mesh[i].vertexOffset) + mesh[i].vertexOffset);
+
+    struct {
+        struct {
+            if(mesh[i].flags & 1)
+                Vector3 pos;
+            else if(mesh[i].flags & 2)
+                PackedPosition pos <read=UnpackPosition>;
+
+            if((mesh[i].flags & 0x5000) == 0x5000)
+                PackedVertexWeights weights;
+
+            DWORD normal <read=UnpackNormal>; // packed normal
+
+            if(mesh[i].flags & 0x10)
+                VertexColor color;
+
+            if(mesh[i].flags & 0x200000000)
+                Vector2 UVLayer;
+
+            Vector2 m_vecTexCoord;
+
+        } vtx[mesh[i].vertexCount];
+
+
+    } vertexData;
+
+    
+    FSeek(startof(mesh[i].weightsOffset) + mesh[i].weightsOffset);
+    struct {
+        char weights[mesh[i].weightsCount];
+    } weightData;
+
+    FSeek(startof(mesh[i].indexOffset) + mesh[i].indexOffset);
+    struct {
+        int16 indices[mesh[i].indexCount.count];
+    } indexData;
+};
