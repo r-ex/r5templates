@@ -28,72 +28,73 @@ typedef uint64 uint64_t;
 struct VGHeader
 {
 	char id[4] <fgcolor=cLtGreen>;		// 0x47567430	'0tvg'
-	uint32 version;	    // 0x1
-	uint32 unk;	        // Usually 0
-	uint32 dataSize;	// Total size of data + header in starpak
+    //int id <fgcolor=cLtGreen>;             // 0x47567430	'0tvg'
+	int version;	    // 0x1
+	int unk;	        // Usually 0
+	int dataSize;	// Total size of data + header in starpak
 
-	uint64 boneRemapOffset; // offset to bone remap buffer
-	uint64 boneRemapCount;  // number of "bone remaps" (size: 1)
+	__int64 boneStateChangeOffset; // offset to bone remap buffer
+	__int64 numBoneStateChanges;  // number of "bone remaps" (size: 1)
 
-	uint64 meshOffset;   // offset to mesh buffer
-	uint64 meshCount;    // number of meshes (size: 0x48)
+	__int64 meshOffset;   // offset to mesh buffer
+	__int64 numMeshes;    // number of meshes (size: 0x48)
 
-	uint64 indexOffset;     // offset to index buffer
-	uint64 indexCount;      // number of indices (size: 2 (uint16_t))
+	__int64 indexOffset;     // offset to index buffer
+	__int64 numIndices;      // number of indices (size: 2 (uint16_t))
 
-	uint64 vertexOffset;    // offset to vertex buffer
-	uint64 vertexCount;     // number of bytes in vertex buffer
+	__int64 vertOffset;    // offset to vertex buffer
+	__int64 numVerts;     // number of bytes in vertex buffer
 
-	uint64 extendedWeightsOffset;   // offset to extended weights buffer
-	uint64 extendedWeightsCount;    // number of bytes in extended weights buffer
+	__int64 externalWeightOffset;   // offset to extended weights buffer
+	__int64 externalWeightsSize;    // number of bytes in extended weights buffer
 
-    
     // there is one for every LOD mesh
     // i.e, unknownCount == lod.meshCount for all LODs
-	uint64 unknownOffset;   // offset to buffer
-	uint64 unknownCount;    // count (size: 0x30)
+	__int64 unknownOffset;   // offset to buffer
+	__int64 numUnknown;    // count (size: 0x30)
 
-	uint64 lodOffset;       // offset to LOD buffer
-	uint64 lodCount;        // number of LODs (size: 0x8)
+	__int64 lodOffset;       // offset to LOD buffer
+	__int64 numLODs;        // number of LODs (size: 0x8)
 
-	uint64 externalWeightsOffset;   // offset to external weights buffer
-	uint64 externalWeightsCount;     // number of external weights (size: 0x10)
+	__int64 legacyWeightOffset;	// seems to be an offset into the "external weights" buffer for this mesh
+	__int64 numLegacyWeights;   // seems to be the number of "external weights" that this mesh uses
 
-	uint64 stripsOffset;    // offset to strips buffer
-	uint64 stripsCount;     // number of strips (size: 0x23)
+	__int64 stripOffset;    // offset to strips buffer
+	__int64 numStrips;     // number of strips (size: 0x23)
 
-    char unused[0x40];
+    int unused[16];
 };
 
 struct VGMesh
 {
 	__int64 flags <fgcolor=cLtGreen, read=Str("0x%LX", this)>;	// mesh flags
 
-	int vertexOffset;			// start offset for this mesh's vertices
+	int vertOffset;			// start offset for this mesh's vertices
 	int vertCacheSize;		    // number of bytes used from the vertex buffer
-	int vertexCount;			// number of vertices
+	int numVerts;			// number of vertices
 
-	int unk1;
+	int unk1; 
 
-	int extendedWeightsOffset;	// start offset for this mesh's "extended weights"
-	int extendedWeightsSize;    // size or count of extended weights
+	int externalWeightOffset;	// start offset for this mesh's "extended weights"
+	int externalWeightSize;    // size or count of extended weights
 
 	int indexOffset;			// start offset for this mesh's "indices"
-	int indexCount;				// number of indices
+	int numIndices;				// number of indices
 
-	int externalWeightsOffset;	// seems to be an offset into the "external weights" buffer for this mesh
-	int externalWeightsCount;   // seems to be the number of "external weights" that this mesh uses
+	int legacyWeightOffset;	// seems to be an offset into the "external weights" buffer for this mesh
+	int numLegacyWeights;   // seems to be the number of "external weights" that this mesh uses
 
-	int stripsOffset;			// Index into the strips structs
-	int stripsCount;
+	int stripOffset;        // Index into the strips structs
+	int numStrips;
 
+    // might be stuff like topologies
 	int Int15;
 	int Int16;
 	int Int17;
 	int Int18;
 };
 
-VGHeader vhdr;
+VGHeader vhdr <bgcolor=0x99CC44>;
 
 // asserts
 if( vhdr.id != "0tVG" || vhdr.version != 1 )
@@ -101,13 +102,13 @@ if( vhdr.id != "0tVG" || vhdr.version != 1 )
 //if( FileSize() != vhdr.dataSize )
 //    Assert(0, "invalid data size");
 
-local uint64 i = 0;
+local int i = 0;
+local int j = 0;
+local int n = 0;
+local int k = 0;
 
-FSeek(vhdr.boneRemapOffset);
-ubyte BoneRemaps[vhdr.boneRemapCount];
-
-FSeek(vhdr.lodOffset);
-ModelLODHeader_t lod[vhdr.lodCount]<bgcolor=cLtGray>;
+FSeek(vhdr.boneStateChangeOffset);
+ubyte BoneStates[vhdr.numBoneStateChanges] <bgcolor=cDkGreen>;
 
 struct unkdata
 {
@@ -118,10 +119,73 @@ struct unkdata
 };
 
 FSeek(vhdr.unknownOffset);
-unkdata unk_data[vhdr.unknownCount]<bgcolor=cYellow>;
+unkdata unk_data[vhdr.numUnknown]<bgcolor=cYellow>;
 
-for(i = 0; i < vhdr.meshCount; ++i)
+
+for(i = 0; i < vhdr.numLODs; i++)
 {
+    FSeek(startof(vhdr));
+    struct {
+        FSeek(vhdr.lodOffset + (i * sizeof(ModelLODHeader_t)));
+        ModelLODHeader_t lod <bgcolor=cLtGray>;
+
+        for(j = 0; j < lod.numMeshes; j++)
+        {
+            FSeek(vhdr.meshOffset + (j * sizeof(VGMesh)) + (lod.meshOffset * sizeof(VGMesh)));
+            struct {
+                VGMesh mesh <bgcolor=cLtRed>;
+
+                for(n = 0; n < mesh.numStrips; n++)
+                {
+                    FSeek(vhdr.indexOffset + (mesh.indexOffset * 2));
+                    short indice[mesh.numIndices] <bgcolor=cLtBlue>;
+
+                    FSeek(vhdr.vertOffset + mesh.vertOffset);
+                    if(mesh.externalWeightSize)
+                    {
+                        struct {
+                            for(k = 0; k < mesh.numVerts; k++)
+                            {
+                                FSeek(vhdr.vertOffset + mesh.vertOffset + (mesh.vertCacheSize * k));
+                                struct {
+                                    mstudiovertex_t_vg vert <bgcolor=cDkBlue>;
+
+                                    Assert(vert.m_NormalTangentPacked.tangent < 1023, "gamer");
+
+                                    if(vert.m_BoneWeightsPacked.numbones > 1)
+                                    {
+                                        FSeek(vhdr.externalWeightOffset + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioexternalboneweight_t)));
+                                        mstudioexternalboneweight_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
+                                    }
+                                } vertex;
+                            }
+                        } vert_group;
+                    }
+                    else
+                    {
+                        mstudiovertex_t_vg verts[mesh.numVerts] <bgcolor=cDkBlue>;
+                    }        
+
+                    // conversion leftovers?
+
+                    // for all verts or none
+                    FSeek(vhdr.legacyWeightOffset + (mesh.legacyWeightOffset * sizeof(mstudioboneweight_t)));
+                    mstudioboneweight_t m_BoneWeights[mesh.numLegacyWeights] <bgcolor=cDkGreen>;
+
+                    FSeek(vhdr.stripOffset + (mesh.stripOffset * (sizeof(StripHeader_t))));
+                    StripHeader_t vtx_strip <bgcolor=cLtBlue>;
+                }
+            } mesh;
+        }
+    } lod <read=Str("======== LOD %i ========", this.lod.switchPoint)>;
+}
+
+local int extendedWeightCount = 0;
+
+/*for(i = 0; i < vhdr.meshCount; ++i)
+{
+    extendedWeightCount = 0;
+
     FSeek(vhdr.meshOffset + (i * sizeof(VGMesh)));
 
     VGMesh mesh <bgcolor=cLtRed>;
@@ -150,30 +214,8 @@ for(i = 0; i < vhdr.meshCount; ++i)
     struct
     {
         local int vertexCount = mesh.vertexCount;
-        struct
-        {
-            if(mesh.flags & VG_POSITION)
-                Vector3 m_vecPosition;
-            else if(mesh.flags & VG_PACKED_POSITION)
-                PackedPosition pos <read=UnpackPosition>;
-
-            if(mesh.flags & VG_PACKED_WEIGHTS)
-                PackedVertexWeights weights;
-
-            DWORD normal <read=UnpackNormal>; // packed normal
-
-            // vertex color from vvc
-            if(mesh.flags & VG_VERTEX_COLOR)
-                VertexColor_t m_color;
-
-            Vector2 m_vecTexCoord;
-
-            // same vector2 from vvc
-            if(mesh.flags & VG_UV_LAYER)
-                Vector2 UVLayer;
-
-        } vtx[mesh.vertexCount];
-    } vertexData<read=Str("%i bytes, %i verts", sizeof(this.vtx), this.vertexCount), bgcolor=cDkBlue>;
+        mstudiovertex_t_vg vtx[mesh.vertexCount];
+    } vertexData<read=Str("%i bytes, %i verts", sizeof(this.vtx), this.vertexCount), bgcolor=>;
 
 
     if(mesh.extendedWeightsSize != 0)
@@ -182,10 +224,10 @@ for(i = 0; i < vhdr.meshCount; ++i)
     
         struct
         {
-            extendedWeight data[mesh.extendedWeightsSize / 4];
+            PackedVertexWeights_Extension data[mesh.extendedWeightsSize / 4];
         } extendedWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
     }
-
+        
     if(mesh.externalWeightsCount != 0)
     {
         FSeek(vhdr.externalWeightsOffset + (mesh.externalWeightsOffset * 16));
@@ -196,6 +238,13 @@ for(i = 0; i < vhdr.meshCount; ++i)
         } externalWeightsData<read=Str("%i weights", sizeof(this.m_BoneWeights)  / 16), bgcolor=cDkGreen>;
     }
     
+    for(j = 0; j < mesh.vertexCount; j++)
+    {
+       extendedWeightCount += vertexData[i].vtx[j].weights.externalcount; 
+    }
+
+    Assert((mesh.extendedWeightsSize / 4) !=  extendedWeightCount,"yed");
+
     // Strips
 
     FSeek(vhdr.stripsOffset + (mesh.stripsOffset * sizeof(StripHeader_t)));

@@ -11,12 +11,13 @@
 //   History: 
 //------------------------------------------------
 #include "MiscStructs.bt"
+#include "VGStructs.bt"
 typedef unsigned char uint8_t;
 typedef uint16 uint16_t;
 typedef uint32 uint32_t;
 typedef uint64 uint64_t;
 
-typedef enum <uint64> {
+/*typedef enum <uint64> {
     VG_POSITION = 0x1,
     VG_PACKED_POSITION = 0x2,
     VG_VERTEX_COLOR = 0x10,
@@ -24,7 +25,7 @@ typedef enum <uint64> {
     VG_PACKED_WEIGHTS = 0x5000,
     VG_UV_LAYER = 0x200000000, // what
     
-} VGFLAGS;
+} VGFLAGS;*/
 
 struct VGHeader
 {
@@ -37,8 +38,8 @@ struct VGHeader
 
 struct RMdlVGIndexCountPacked
 {
-	uint32 count : 24;
-	uint32 type : 8;
+	uint32 count : 28;
+	uint32 type : 4;
 };
 
 struct VGMesh
@@ -48,12 +49,12 @@ struct VGMesh
     short vertexSize;
     short unk;
     int indexOffset;
-    RMdlVGIndexCountPacked indexCount;
+    RMdlVGIndexCountPacked indexPacked;
     int vertexOffset;
     int vertexBufferSize;
 
     int weightsOffset;
-    int weightsCount;
+    int weightsSize;
 
     int unkOffset;
     int unkCount;
@@ -86,7 +87,7 @@ struct VGStrip
 };
 
 
-struct PackedPosition
+/*struct PackedPosition
 {
     DWORD dword[2];
 };
@@ -169,7 +170,7 @@ struct mstudioboneweight_t
 struct VertexColor
 {
     ubyte r,g,b,a;
-};
+};*/
 
 
 local int i = 0;
@@ -178,10 +179,10 @@ VGHeader vhdr;
 FSeek(startof(vhdr) + 12 + vhdr.meshindex);
 
 
-VGMesh mesh[vhdr.nummeshes];
+//VGMesh mesh[vhdr.nummeshes];
 
 
-for( i = 0; i < vhdr.nummeshes; ++i)
+/*for( i = 0; i < vhdr.nummeshes; ++i)
 {
     FSeek(startof(mesh[i].vertexOffset) + mesh[i].vertexOffset);
 
@@ -205,10 +206,10 @@ for( i = 0; i < vhdr.nummeshes; ++i)
 
             Vector2 m_vecTexCoord;
 
-        } vtx[mesh[i].vertexCount];
+        }mstudiovertex_t_vg vtx[mesh[i].vertexCount];
 
 
-    } vertexData;
+    } vertexData <read=Str("%i bytes, %i verts", sizeof(this.vtx), this.vertexCount), bgcolor=cDkBlue>;
 
     
     FSeek(startof(mesh[i].weightsOffset) + mesh[i].weightsOffset);
@@ -220,4 +221,76 @@ for( i = 0; i < vhdr.nummeshes; ++i)
     struct {
         int16 indices[mesh[i].indexCount.count];
     } indexData;
+};*/
+
+//local uint64 i = 0;
+local uint64 j = 0;
+
+for(i = 0; i < 1; ++i)
+{
+    //FSeek(startof(vhdr.lodOffset) + (sizeof(VGLod) * i) + vhdr.lodOffset);
+    //VGLod lod <bgcolor=cPurple,read=Str("======== LOD %i ========", this.unklodlevel1)>;
+
+    //FSeek(startof(lod.meshOffset) + lod.meshOffset - 64);
+    //VGHeader vghdr;
+
+    //FSeek(startof(vghdr.lodOffset) + vghdr.lodOffset);
+    //VGLod vglod <bgcolor=cPurple>;
+
+    for(j = 0; j < vhdr.nummeshes; ++j)
+    {
+        FSeek(startof(vhdr.meshindex) + vhdr.meshindex + (j*sizeof(VGMesh)));
+        VGMesh mesh <bgcolor=cLtRed, read=Str("- %i vertices, %i indices, %i weights", this.vertexCount, this.indexPacked.count, this.weightsSize / 4)>;
+    
+        if(mesh.flags == 0 || mesh.vertexCount == 0)
+            continue;
+    
+        // Indices
+    
+        FSeek(startof(mesh.indexOffset) + mesh.indexOffset);
+    
+        struct
+        {
+            short data[mesh.indexPacked.count];
+        } indexData<read=Str("%i indices", sizeof(this.data) / 2), bgcolor=cLtBlue>;
+    
+        // Vertices
+    
+        FSeek(startof(mesh.vertexOffset) + mesh.vertexOffset);
+
+        struct
+        {
+            local int vertexCount = mesh.vertexCount;
+            mstudiovertex_t_vg vtx[mesh.vertexCount];
+        } vertexData<read=Str("%i bytes, %i verts", sizeof(this.vtx), this.vertexCount), bgcolor=cDkBlue>;
+
+        if(mesh.weightsSize)
+        {
+            FSeek(startof(mesh.weightsOffset) + mesh.weightsOffset);
+        
+            struct
+            {
+                PackedVertexWeights_Extension data[mesh.weightsSize / 4];
+            } extendedWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
+        }
+
+        // External Weights
+        /*if(mesh.externalWeightsCount)
+        {
+            FSeek(startof(mesh.externalWeightsOffset) + mesh.externalWeightsOffset);
+        
+            struct
+            {
+                mstudioboneweight_t m_BoneWeights[mesh.externalWeightsCount];
+            } externalWeightsData<read=Str("%i weights", sizeof(this.m_BoneWeights)  / 16), bgcolor=cDkGreen>;
+        }
+
+        if(mesh.stripsCount)
+        {
+            FSeek(startof(mesh.stripsOffset) + mesh.stripsOffset);
+            StripHeader_t strip<bgcolor=cYellow>;
+        }*/
+
+    }
+
 };

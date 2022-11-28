@@ -46,14 +46,21 @@ struct StripHeader_t
 
 struct ModelLODHeader_t
 {
-	uint16 meshIndex;
-	uint16 meshCount;
-	float distance;
+	short meshOffset;
+	short numMeshes;
+	float switchPoint;
 };
 
 struct PackedPosition
 {
     DWORD dword[2];
+};
+
+struct Vector64
+{
+    unsigned __int64 x : 21 <read=Str("%f", (this * 0.0009765625) - 1024.0)>;
+    unsigned __int64 y : 21 <read=Str("%f", (this * 0.0009765625) - 1024.0)>;
+    unsigned __int64 z : 22 <read=Str("%f", (this * 0.0009765625) - 2048.0)>;
 };
 
 string UnpackPosition(PackedPosition& pos)
@@ -113,25 +120,194 @@ string UnpackNormal(DWORD _Value)
 		return Str("< %f, %f, %f >", v1, v2, v3);
 };
 
-struct PackedVertexWeights
+struct PackedNormalTangent
 {
-	short BlendWeights[2] <read=Str("%f", this /  32767)>; // haha jk.. unless?
-    byte BlendIds[4]; // last two flags?
+    int tangent : 10;
+    int norm1 : 9;
+    int norm2 : 9;
+    int norm_sign : 1;
+    int norm_dropped : 2;
+    int binorm_sign : 1; // for tangent
 };
 
-struct extendedWeight
+string UnpackNormal2(PackedNormalTangent& TBN)
 {
-    byte unk[4];
+        // normal 
+		local int normalSign = TBN.norm_sign ? -255 : 255;
+
+		local float norm1 = TBN.norm1  + -255.5;
+		local float norm2 = TBN.norm2  + -255.5;
+
+        // remove 1.0 / if issues occur
+
+        local float compressFactor = 1.0 / Sqrt(((norm2 * norm2) + (255.0 * 255.0)) + (norm1 * norm1));
+
+		local float valueNorm1, valueNorm2, valueDropped;
+
+        valueNorm1 = norm1 * compressFactor; // (1.0 / compressFactor) if issues occur
+		valueNorm2 = norm2 * compressFactor;
+		valueDropped = normalSign * compressFactor;
+
+        local Vector3 normal;
+   
+        // check which axis was dropped
+        switch(TBN.norm_dropped)
+        {
+            case 0:
+                normal.x = valueDropped;
+			    normal.y = valueNorm2;
+			    normal.z = valueNorm1;
+                break;
+            case 1:
+                normal.x = valueNorm1;
+			    normal.y = valueDropped;
+			    normal.z = valueNorm2;
+                break;
+            case 2:
+                normal.x = valueNorm2;
+			    normal.y = valueNorm1;
+			    normal.z = valueDropped;
+                break;
+            default:
+                break;
+        };
+
+        float x = TBN.tangent;//(int32_t)_Value & 1023; // r2.x
+		float r2y = 1 + normal.z;
+		r2y = 1.f / r2y;  // rcp
+		float r2z = -r2y * normal.x;
+		float r2w = normal.y * normal.y;
+		float r3x = r2z * normal.y;
+		float r4x = -r2y * r2w + 1;
+		float r4y = -normal.x;
+		float r4z = -normal.y;
+		float r3z = r2z * normal.x + 1;
+		float r3y;
+		float r3w = r4y;
+		if (normal.z < -0.999899983)  // r1.w
+		{
+			r2y = 0;
+			r2z = -1;
+			r2w = 0;
+		}
+		else
+		{
+			r2y = r3z;
+			r2z = r3x;
+			r2w = r3w;
+		}
+		float r4w = r3x;
+		if (normal.z < -0.999899983)  // r1.w
+		{
+			r3x = -1;
+			r3y = 0;
+			r3z = 0;
+		}
+		else
+		{
+			r3x = r4w;
+			r3y = r4x;
+			r3z = r4z;
+		}
+		x = 0.00614192151 * x;
+		float r2x = Sin(x);
+		r4x = Cos(x);
+		r3x *= r2x;
+		r3y *= r2x;
+		r3z *= r2x;
+		r2x = r2y * r4x + r3x;
+		r2y = r2z * r4x + r3y;
+		r2z = r2w * r4x * r3z;
+
+		// normalizing
+		float r1w = r2x * r2x + r2y * r2y + r2z * r2z;
+		r1w = 1.f / Sqrt(r1w);
+		r2x *= r1w;
+		r2y *= r1w;
+		r2z *= r1w;
+
+        //float x = TBN.tangent * compressFactor;
+        //x = 0.00614192151 * x;
+		//float r2x = Sin(x);
+
+        // where other values??
+        local Vector4 tangent;
+
+        tangent.x = r2x;
+        tangent.y = r2y;
+        tangent.z = r2z;
+
+        tangent.w = TBN.binorm_sign ? -1 : 1;
+
+		return Str("< %f, %f, %f > < %f, %f, %f, %f >", normal.x, normal.y, normal.z, tangent.x, tangent.y, tangent.z, tangent.w);
+};
+
+struct mstudiopackedboneweight_t
+{
+    // is weight[0] actually a weight in most cases?
+	short weight[2] <read=Str("%f", this /  32767.0)>; // should be 32768 instead of 32767.5 but 010 cries about it
+    unsigned char bones[3];
+    byte numbones;
+};
+
+struct mstudioexternalboneweight_t
+{
+	short	weight <read=Str("%f", this / 32767.0)>;
+	short	bone; 
+};
+
+struct mstudiopackedweight_t
+{
+    short weight[3] <read=Str("%f", this / 32767.0)>; 
+
+    short pad; // what if
+
+    int externalweightindex;
 };
 
 struct mstudioboneweight_t
 {
-	float	weight[MAX_NUM_BONES_PER_VERT];
-	char	bone[MAX_NUM_BONES_PER_VERT]; 
-	byte	numbones;
+    union {       
+        mstudiopackedweight_t packedweight;
+        float weight[MAX_NUM_BONES_PER_VERT];
+    } weights;
+
+    unsigned char bone[MAX_NUM_BONES_PER_VERT]; // set to unsigned so we can read it
+    byte numbones; // if all three above are filled and this does not equal 3 there are four(?) weights
 };
 
 struct VertexColor_t
 {
 	uint8 r, g, b, a;
+};
+
+#define VG_POSITION         0x1
+#define VG_PACKED_POSITION  0x2
+#define VG_VERTEX_COLOR     0x10
+#define VG_PACKED_WEIGHTS   0x5000
+#define VG_UV_LAYER2        0x200000000 // what
+
+struct mstudiovertex_t_vg
+{
+    if(mesh.flags & VG_POSITION)
+        Vector3 m_vecPosition;
+    else if(mesh.flags & VG_PACKED_POSITION)
+        Vector64 m_vecPositionPacked;
+
+    if(mesh.flags & VG_PACKED_WEIGHTS)
+        mstudiopackedboneweight_t m_BoneWeightsPacked;
+
+    PackedNormalTangent m_NormalTangentPacked <read=UnpackNormal2>; // packed normal
+    //DWORD m_NormalTangentPacked <read=UnpackNormal>; // packed normal
+
+    // vertex color from vvc
+    if(mesh.flags & VG_VERTEX_COLOR)
+        VertexColor_t m_color;
+
+    Vector2 m_vecTexCoord;
+
+    // same vector2 from vvc
+    if(mesh.flags & VG_UV_LAYER2)
+        Vector2 m_vecTexCoord2;
+
 };

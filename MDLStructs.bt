@@ -201,7 +201,10 @@ struct studiohdr_t
 
 	int unkindex4; // chunk before unkindex3 sometimes
 
-	int unk4_v54[3];
+	short unk4_v54[2]; // same as unk3_v54_v121, 2nd might be base for other offsets?
+
+    int weightindex;
+    int weightsize;
 };
 
 struct studiohdr_t_v121

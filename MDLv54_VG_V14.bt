@@ -66,6 +66,8 @@ struct VGMesh
 
 	__int64 stripsOffset;			// Index into the strips structs
 	__int64 stripsCount;
+
+    __int64 literallydying[2];
 };
 
 struct VGLod
@@ -130,7 +132,28 @@ for(i = 0; i < vhdr.lodCount; ++i)
         struct
         {
             local int vertexCount = mesh.vertexCount;
-            mstudiovertex_t_vg vtx[mesh.vertexCount];
+            struct
+            {    
+                if(mesh.flags & 1)
+                    Vector3 pos;
+                else if(mesh.flags & 2)
+                    PackedPosition pos <read=UnpackPosition>;
+    
+                if((mesh.flags & 0x5000) == 0x5000)
+                    PackedVertexWeights weights;
+    
+                DWORD normal <read=UnpackNormal>; // packed normal
+    
+                if(mesh.flags & 0x10)
+                    VertexColor_t color;
+    
+                Vector2 m_vecTexCoord;
+    
+                // same vector2 from vvc
+                if(mesh.flags & 0x200000000)
+                    Vector2 UVLayer;
+    
+            } vtx[mesh.vertexCount];
         } vertexData<read=Str("%i bytes, %i verts", sizeof(this.vtx), this.vertexCount), bgcolor=cDkBlue>;
 
         if(mesh.extendedWeightsSize)
@@ -139,7 +162,7 @@ for(i = 0; i < vhdr.lodCount; ++i)
         
             struct
             {
-                mstudioboneweight_t data[mesh.extendedWeightsSize / 4];
+                extendedWeight data[mesh.extendedWeightsSize / 4];
             } extendedWeightsData<read=Str("%i bytes", sizeof(this.data)), bgcolor=cDkGreen>;
         }
 

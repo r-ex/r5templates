@@ -21,7 +21,7 @@ mstudioseqdesc_t_v16 seqdesc <bgcolor=0xf0b27a, read=Str("%s : %s", ReadString(s
 local int numanims = seqdesc.groupsize[0] * seqdesc.groupsize[1];
 local int numbones = (seqdesc.activitymodifierindex - seqdesc.weightlistindex) / 4;
 
-if((seqdesc.unkindex - seqdesc.animindexindex) < sizeof(mstudioanimdesc_t_v54_v121))
+if((seqdesc.unkindex - seqdesc.animindexindex) <= sizeof(mstudioanimdesc_t_v16))
     numanims = 0;
 
 // generate all the sequences data structures
@@ -74,17 +74,22 @@ for(k = 0; k < numanims; k++)
                     local int nullsections = 0;
 
                     // respawn really needs to cut this out
-                    if(numanims > 1 && numanims > (k + 1))
+                    /*if(numanims > 1 && numanims > (k + 1))
                     {
                         if((blends[k] + sectionindexes[0].animindex) >= blends[k + 1])
                         {
                             nullsections = 1;
                         }
-                    }
+                    }*/
+
+                    local int nullsection = 0;
+
+                     if((sectionindexes[1].animindex - sectionindexes[0].animindex) <= 4)
+                        nullsection = 1;
 
                     for(i = 0; i < sectionlength; i++)
                     {
-                        if(sectionindexes[i].animindex && !sectionindexes[i].isExternal && (blends[k] + sectionindexes[i].animindex) < seqdesc.szlabelindex && !nullsections)
+                        if(sectionindexes[i].animindex && !sectionindexes[i].isExternal && !nullsection)
                         {
                             struct {
                                 FSeek(startof(animdesc[k]) + sectionindexes[i].animindex);
@@ -137,7 +142,7 @@ for(k = 0; k < numanims; k++)
     
         if(animdesc[k].compressedikerrorindex)
         {
-            FSeek(startof(animdesc[k]) + animdesc[k].compressedikerrorindex);
+            FSeek(startof(animdesc[k]) + GetRMDLOffset(animdesc[k].compressedikerrorindex));
             mstudiocompressedikerror_t_v54 ikcompressederror <bgcolor=cLtGreen>;
         }
     } animdesc_data;

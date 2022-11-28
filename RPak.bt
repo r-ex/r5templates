@@ -437,6 +437,12 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
         else if(AssetEntries[i].Version >= 16) // v16
             rstudiohdr_t_v16 rmdl <read=ReadString(startof(this) + this.sznameindex), fgcolor=cLtBlue>;
 
+        //if(rmdl.flags & 0x4000)
+        //    Assert(rmdl.weightsize, "flag without weight");
+
+        //if(rmdl.weightsize)
+        //    Assert(rmdl.flags & 0x4000, "weight without flag");
+
 
         /*Assert(rmdl.unk_v16 < 1, "unk_v16");
         Assert(rmdl.unk1_v16 < 2, "unk1_v16");
@@ -658,7 +664,7 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
             }
             else if(AssetEntries[i].SubHeaderSize == 64 && AssetEntries[i].Version == 11)
             {
-                #include "./RSEQ/rseq_v11.bt"
+                //#include "./RSEQ/rseq_v11.bt"
             }
         } an;
 

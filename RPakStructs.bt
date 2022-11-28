@@ -924,7 +924,7 @@ struct ModelHeaderV9
 	// IDST data
 	RPakPtr pRMDL <comment=".rmdl">;
 
-    uint64_t unk;
+    uint64_t pModelInfo; // set on load
 
 	// model path
 	// e.g. mdl/vehicle/goblin_dropship/goblin_dropship.rmdl
