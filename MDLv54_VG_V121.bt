@@ -54,8 +54,6 @@ struct MeshHeader_VG_t
 	__int64 stripOffset;            // Index into the strips structs
 	__int64 numStrips;
 
-    __int64 unkOffset;
-    __int64 numUnk;
 };
 
 VertexGroupHeader_t vhdr <bgcolor=0x99CC44>;
@@ -93,32 +91,44 @@ for(i = 0; i < vhdr.numLODs; ++i)
             FSeek(startof(lod.meshIndex) + lod.meshIndex + (j * sizeof(MeshHeader_VG_t)) + (lod.meshOffset * sizeof(MeshHeader_VG_t)));
             struct {
                 MeshHeader_VG_t mesh <bgcolor=cLtRed>;
-                
-                FSeek(startof(mesh.indexOffset) + mesh.indexOffset);
-                unsigned short indice[mesh.numIndices] <bgcolor=cLtBlue>;
 
-                FSeek(startof(mesh.vertOffset) + mesh.vertOffset);
-                if(mesh.externalWeightSize)
+                for(n = 0; n < mesh.numStrips; n++)
                 {
-                    struct {
-                        for(k = 0; k < mesh.numVerts; k++)
-                        {
-                            FSeek(startof(mesh.vertOffset) + mesh.vertOffset + (mesh.vertCacheSize * k));
-                            struct {
-                                mstudiovertex_t_vg vert <bgcolor=cDkBlue>;
+                    FSeek(startof(mesh.indexOffset) + mesh.indexOffset);
+                    unsigned short indice[mesh.numIndices] <bgcolor=cLtBlue>;
 
-                                if(vert.m_BoneWeightsPacked.numbones > 1)
-                                {
-                                    FSeek(startof(mesh.externalWeightOffset) + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioexternalboneweight_t)));
-                                    mstudioexternalboneweight_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
-                                }
-                            } vertex;
-                        }
-                    } vert_group;
-                }
-                else
-                {
-                    mstudiovertex_t_vg verts[mesh.numVerts] <bgcolor=cDkBlue>;
+                    FSeek(startof(mesh.vertOffset) + mesh.vertOffset);
+                    if(mesh.externalWeightSize)
+                    {
+                        struct {
+                            for(k = 0; k < mesh.numVerts; k++)
+                            {
+                                FSeek(startof(mesh.vertOffset) + mesh.vertOffset + (mesh.vertCacheSize * k));
+                                struct {
+                                    mstudiovertex_t_vg vert <bgcolor=cDkBlue>;
+
+                                    if(vert.m_BoneWeightsPacked.numbones > 1)
+                                    {
+                                        FSeek(startof(mesh.externalWeightOffset) + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioexternalboneweight_t)));
+                                        mstudioexternalboneweight_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
+                                    }
+                                } vertex;
+                            }
+                        } vert_group;
+                    }
+                    else
+                    {
+                        mstudiovertex_t_vg verts[mesh.numVerts] <bgcolor=cDkBlue>;
+                    }        
+
+                    // conversion leftovers?
+
+                    // for all verts or none
+                    FSeek(startof(mesh.legacyWeightOffset) + mesh.legacyWeightOffset);
+                    mstudioboneweight_t m_BoneWeights[mesh.numLegacyWeights] <bgcolor=cDkGreen>;
+
+                    FSeek(startof(mesh.stripOffset) + mesh.stripOffset);
+                    StripHeader_t vtx_strip <bgcolor=cLtBlue>;
                 }
             } mesh <read=Str("- %i vertices, %i indices, %i weights", this.mesh.numVerts, this.mesh.numIndices, this.mesh.externalWeightSize / 4)>;
         }
