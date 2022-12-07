@@ -22,7 +22,7 @@ struct VertexGroupHeader_t
     byte lodLevel;
     byte numLODs;
     
-    byte unk1; // lod/header idx?
+    byte headerIndex; // header idx?
     
     byte numUnknown;
     int lodOffset;
@@ -33,9 +33,11 @@ struct ModelLODHeader_VG_t_v16
     byte numMeshes;
     byte meshOffset; // for lod, probably 0 in most cases
     byte lodLevel;
-    byte unklodlevel1; // set to 0 if there is no extra headers?
+    byte headerIndex; // set to 0 if there is no extra headers? header idx?
     int meshIndex;
 };
+
+// header index might also relate to RMDL headers for vg
 
 struct MeshHeader_VG_t
 {
@@ -106,6 +108,9 @@ while(pos < FileSize())
                                 } vertex;
                             }
                         } vert_group;
+
+                        // do this just in case there are external weights and no external weights on last vertex
+                        FSeek(startof(mesh.externalWeightOffset) + mesh.externalWeightOffset + mesh.externalWeightSize);
                     }
                     else
                     {
@@ -116,6 +121,7 @@ while(pos < FileSize())
         } lod<read=Str("======== LOD %i ========", lod.lodLevel)>;
     }
 
+    // set the pos correctly for next header (if there is one)
     pos = FTell();
 
     if(pos % 16)
