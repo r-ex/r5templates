@@ -260,13 +260,18 @@ string UnpackNormal2(PackedNormalTangent& TBN)
 
 struct mstudiopackedboneweight_t
 {
-    // is weight[0] actually a weight in most cases?
-	short weight[2] <read=Str("%f", this /  32767.0)>; // should be 32768 instead of 32767.5 but 010 cries about it
-    unsigned char bones[3];
-    byte numbones;
+	short weight[2] <read=Str("%f", this /  32767.0)>; // packed weight, weight float = value / 32767
+                                                       // second weight will be the index into extended weight array if the model has complex weights
+                                                       // if not complex weights it will be the weight value for the second bone
+                                                       // the third/last (if complex weights) will always be calculated
+    unsigned char bones[3]; // third bone slot is only used when the model does NOT have complex weights.
+                            // when using complex weights the second slot will always be the last weight going from vvd -> vg
+                            // this causes the artifact of having two of the same bone ids (I think)
+    byte numbones; // number of bones with weights, does not count base weight (total amount of bones - 1)
+                   // for example the value would be '2' for a vert with three weights.
 };
 
-struct mstudioexternalboneweight_t
+struct mstudioboneweightextra_t
 {
 	short	weight <read=Str("%f", this / 32767.0)>;
 	short	bone; 

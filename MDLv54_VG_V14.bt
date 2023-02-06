@@ -45,8 +45,8 @@ struct MeshHeader_VG_t
 	__int64 vertOffset;             // start offset for this mesh's vertices
 	__int64 vertBufferSize;         // TOTAL size of vertex buffer
 
-	__int64 externalWeightOffset;	// start offset for this mesh's "extended weights"
-	__int64 externalWeightSize;     // size or count of extended weights
+	__int64 extraBoneWeightOffset;	// start offset for this mesh's "extended weights"
+	__int64 extraBoneWeightSize;    // size or count of extended weights
 
 	__int64 legacyWeightOffset;	    // seems to be an offset into the "external weights" buffer for this mesh
 	__int64 numLegacyWeights;       // seems to be the number of "external weights" that this mesh uses
@@ -98,7 +98,7 @@ for(i = 0; i < vhdr.numLODs; ++i)
                 unsigned short indice[mesh.numIndices] <bgcolor=cLtBlue>;
 
                 FSeek(startof(mesh.vertOffset) + mesh.vertOffset);
-                if(mesh.externalWeightSize)
+                if(mesh.extraBoneWeightSize)
                 {
                     struct {
                         for(k = 0; k < mesh.numVerts; k++)
@@ -109,8 +109,8 @@ for(i = 0; i < vhdr.numLODs; ++i)
 
                                 if(vert.m_BoneWeightsPacked.numbones > 1)
                                 {
-                                    FSeek(startof(mesh.externalWeightOffset) + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioexternalboneweight_t)));
-                                    mstudioexternalboneweight_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
+                                    FSeek(startof(mesh.extraBoneWeightOffset) + mesh.extraBoneWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioboneweightextra_t)));
+                                    mstudioboneweightextra_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
                                 }
                             } vertex;
                         }
@@ -120,7 +120,7 @@ for(i = 0; i < vhdr.numLODs; ++i)
                 {
                     mstudiovertex_t_vg verts[mesh.numVerts] <bgcolor=cDkBlue>;
                 }
-            } mesh <read=Str("- %i vertices, %i indices, %i weights", this.mesh.numVerts, this.mesh.numIndices, this.mesh.externalWeightSize / 4)>;
+            } mesh <read=Str("- %i vertices, %i indices, %i weights", this.mesh.numVerts, this.mesh.numIndices, this.mesh.extraBoneWeightSize / 4)>;
         }
     } lod <read=Str("======== LOD %i ========", this.lod.switchPoint)>;
 };

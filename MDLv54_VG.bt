@@ -37,8 +37,8 @@ struct VertexGroupHeader_t
 	__int64 vertOffset;    // offset to vertex buffer
 	__int64 numVerts;     // number of bytes in vertex buffer
 
-	__int64 externalWeightOffset;   // offset to extended weights buffer
-	__int64 externalWeightsSize;    // number of bytes in extended weights buffer
+	__int64 extraBoneWeightOffset;   // offset to extended weights buffer
+	__int64 extraBoneWeightSize;    // number of bytes in extended weights buffer
 
     // there is one for every LOD mesh
     // i.e, unknownCount == lod.meshCount for all LODs
@@ -61,14 +61,14 @@ struct MeshHeader_VG_t
 {
 	__int64 flags <fgcolor=cLtGreen, read=Str("0x%LX", this)>;	// mesh flags
 
-	int vertOffset;			// start offset for this mesh's vertices
+	int vertOffset;			    // start offset for this mesh's vertices
 	int vertCacheSize;		    // number of bytes used from the vertex buffer
-	int numVerts;			// number of vertices
+	int numVerts;			    // number of vertices
 
 	int unk1; 
 
-	int externalWeightOffset;	// start offset for this mesh's "extended weights"
-	int externalWeightSize;    // size or count of extended weights
+	int extraBoneWeightOffset;	// start offset for this mesh's "extended weights"
+	int extraBoneWeightSize;    // size or count of extended weights
 
 	int indexOffset;			// start offset for this mesh's "indices"
 	int numIndices;				// number of indices
@@ -79,7 +79,7 @@ struct MeshHeader_VG_t
 	int stripOffset;        // Index into the strips structs
 	int numStrips;
 
-    // might be stuff like topologies
+    // might be stuff like topologies and or bonestates
 	int unk[4];
 
 	/*int numBoneStateChanges;
@@ -132,43 +132,46 @@ for(i = 0; i < vhdr.numLODs; i++)
 
                 for(n = 0; n < mesh.numStrips; n++)
                 {
-                    FSeek(vhdr.indexOffset + (mesh.indexOffset * 2));
-                    unsigned short indice[mesh.numIndices] <bgcolor=cLtBlue>;
+                    struct {
+                        FSeek(vhdr.stripOffset + ((mesh.stripOffset + n) * sizeof(StripHeader_t)));
+                        StripHeader_t vtx_strip <bgcolor=cLtPurple>;
 
-                    FSeek(vhdr.vertOffset + mesh.vertOffset);
-                    if(mesh.externalWeightSize)
-                    {
-                        struct {
-                            for(k = 0; k < mesh.numVerts; k++)
-                            {
-                                 FSeek(vhdr.vertOffset + mesh.vertOffset + (mesh.vertCacheSize * k));
-                                struct {
-                                    mstudiovertex_t_vg vert <bgcolor=cDkBlue>;
-
-                                    if(vert.m_BoneWeightsPacked.numbones > 1)
-                                    {
-                                        FSeek(vhdr.externalWeightOffset + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioexternalboneweight_t)));
-                                        mstudioexternalboneweight_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
-                                    }
-                                } vertex;
-                            }
-                        } vert_group;
-                    }
-                    else
-                    {
-                        mstudiovertex_t_vg verts[mesh.numVerts] <bgcolor=cDkBlue>;
-                    }        
-
-                    // conversion leftovers?
-
-                    // for all verts or none
-                    FSeek(vhdr.legacyWeightOffset + (mesh.legacyWeightOffset * sizeof(mstudioboneweight_t)));
-                    mstudioboneweight_t m_BoneWeights[mesh.numLegacyWeights] <bgcolor=cDkGreen>;
-
-                    FSeek(vhdr.stripOffset + (mesh.stripOffset * (sizeof(StripHeader_t))));
-                    StripHeader_t vtx_strip <bgcolor=cLtBlue>;
+                        FSeek(vhdr.indexOffset + (mesh.indexOffset * 2) + (vtx_strip.indexOffset * 2));
+                        unsigned short indice[vtx_strip.numIndices] <bgcolor=cLtBlue>;
+    
+                        FSeek(vhdr.vertOffset + mesh.vertOffset + (mesh.vertCacheSize * vtx_strip.vertOffset));
+                        if(mesh.extraBoneWeightSize)
+                        {
+                            struct {
+                                for(k = 0; k < vtx_strip.numVerts; k++)
+                                {
+                                    FSeek(vhdr.vertOffset + mesh.vertOffset + (mesh.vertCacheSize * k));
+                                    struct {
+                                        mstudiovertex_t_vg vert <bgcolor=cDkBlue>;
+    
+                                        if(vert.m_BoneWeightsPacked.numbones > 1)
+                                        {
+                                            FSeek(vhdr.extraBoneWeightOffset + mesh.extraBoneWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioboneweightextra_t)));
+                                            mstudioboneweightextra_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
+                                        }
+                                    } vertex;
+                                }
+                            } vert_group;
+                        }
+                        else
+                        {
+                            mstudiovertex_t_vg verts[vtx_strip.numVerts] <bgcolor=cDkBlue>;
+                        }
+                    } strip<read=Str("- %i vertices, %i indices", this.vtx_strip.numVerts, this.vtx_strip.numIndices)>;
                 }
-            } mesh<read=Str("- %i vertices, %i indices, %i weights", this.mesh.numVerts, this.mesh.numIndices, this.mesh.externalWeightSize / 4)>;
+
+                // conversion leftovers?
+    
+                // for all verts or none
+                FSeek(vhdr.legacyWeightOffset + (mesh.legacyWeightOffset * sizeof(mstudioboneweight_t)));
+                mstudioboneweight_t m_BoneWeights[mesh.numLegacyWeights] <bgcolor=cDkGreen>;
+
+            } mesh<read=Str("- %i vertices, %i indices, %i weights", this.mesh.numVerts, this.mesh.numIndices, this.mesh.extraBoneWeightSize / 4)>;
         }
     } lod <read=Str("======== LOD %i ========", this.lod.switchPoint)>;
 }
