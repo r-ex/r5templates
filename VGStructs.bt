@@ -260,7 +260,8 @@ string UnpackNormal2(PackedNormalTangent& TBN)
 
 struct mstudiopackedboneweight_t
 {
-	short weight[2] <read=Str("%f", this /  32767.0)>; // packed weight, weight float = value / 32767
+    // total extra weights can exceed signed short limit
+	unsigned short weight[2] <read=Str("%f", this /  32767.0)>; // packed weight, weight float = value / 32767
                                                        // second weight will be the index into extended weight array if the model has complex weights
                                                        // if not complex weights it will be the weight value for the second bone
                                                        // the third/last (if complex weights) will always be calculated
