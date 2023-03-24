@@ -128,6 +128,11 @@ void GTPTR(RPakPtr& ptr)
     FSeek(pageoffsets[ptr.Index] + ptr.Offset);
 }
 
+string GetStringFromPtr(RPakPtr& ptr)
+{
+    return ReadString(pageoffsets[ptr.Index] + ptr.Offset);
+};
+
 char PatchData[patchSizeToSkip];
 
 local uint64 i = 0;
@@ -207,18 +212,53 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
 {
     GTPO(AssetEntries[i].SubHeaderPageIndex, AssetEntries[i].SubHeaderPageOffset);
 
-    if( AssetEntries[i].Magic == "efct" && AssetEntries[i].Version == 2)
+    if( AssetEntries[i].Magic == "efct" && AssetEntries[i].Version <= 3)
     {
         struct {
             
             // literally cry about it
-            EffectHeader efct <read=ReadString(pageoffsets[ReadInt(pageoffsets[this.data.Index] + this.data.Offset)] + ReadInt(pageoffsets[this.data.Index] + this.data.Offset+4))>;
+            EffectHeader efct <read=ReadString(pageoffsets[ReadInt(pageoffsets[this.pcfPtr.Index] + this.pcfPtr.Offset)] + ReadInt(pageoffsets[this.pcfPtr.Index] + this.pcfPtr.Offset+4))>;
 
-            if(efct.data.Index != 0 || efct.data.Offset != 0)
+            Assert(efct.pcfCount <= 1, "multi pcf");
+
+            if(efct.pcfPtr.Index != 0 || efct.pcfPtr.Offset != 0)
             {
-                GTPTR(efct.data);
-    
-                EffectData data;
+                GTPTR(efct.pcfPtr);
+                EffectData_v2 data;
+
+                GTPTR(data.pFileName);
+                string filename <fgcolor=0xddaa66>;
+
+                GTPTR(data.pStringDict);
+                struct {
+                    RPakPtr string_ptr[data.numStrings];
+
+                    local int stringIdx = 0;
+                    for(stringIdx = 0; stringIdx < data.numStrings; stringIdx++)
+                    {
+                        GTPTR(string_ptr[stringIdx]);
+                        struct {
+                            string s <fgcolor=0xee5585>;
+                        } stringentry <read=this.s>;
+                    }
+                } stringdict;
+
+                // DmeParticleSystemDefinition
+                GTPTR(data.pElements);
+                struct {
+                    RPakPtr elementName <read=GetStringFromPtr(this)>; // ?
+                    GUID guid; // question mark
+                    RPakPtr unkPtr;
+                    __int64 unk[3];
+                    __int64 max_particles;
+                    RPakPtr material <read=GetStringFromPtr(this)>;
+                    __int64 unk1[7];
+                    RPakPtr unkPtr1 <read=GetStringFromPtr(this)>; // cull replacement definition/fallback replacement definition
+                    __int64 bro[35];
+                } element[data.numElements] <read=GetStringFromPtr(this.elementName)>;
+                //RPakPtr efctname <hidden=false>;
+                //GTPTR(efctname);
+                //string EffectName;
             }
         } effect_asset;
     }

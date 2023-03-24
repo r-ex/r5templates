@@ -1455,9 +1455,8 @@ struct MapHeader
 
 struct EffectHeader
 {
-	RPakPtr data;
-	int unk2;
-	int unk3;
+	RPakPtr pcfPtr;
+	__int64 pcfCount;
 };
 
 struct EffectData
@@ -1468,4 +1467,14 @@ struct EffectData
 	RPakPtr ParticleSystemOperator; // Double ptr to pso name
 	RPakPtr unk3;
 	RPakPtr unk4;
+};
+
+struct EffectData_v2
+{
+	RPakPtr pFileName;
+	RPakPtr pElements; // unsure
+	__int64 numElements;
+	RPakPtr pStringDict; // Double ptr to pso name
+	__int64 numStrings;
+	//RPakPtr unk4;
 };
