@@ -631,6 +631,12 @@ for(i = 0; i < pakhdr.AssetEntryCount; ++i)
     else if( AssetEntries[i].Magic == "Ptch" )
     {
         PtchHeader ptch;
+
+        GTPTR(ptch.pPakNames);
+        RPakPtr pakNames[ptch.patchedPakCount] <read=GetStringFromPtr(this)>;
+
+        GTPTR(ptch.pPakPatchNums);
+        char patchNum[ptch.patchedPakCount];
     }
     else if( AssetEntries[i].Magic == "stlt" )
     {
