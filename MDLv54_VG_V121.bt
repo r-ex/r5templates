@@ -109,8 +109,8 @@ for(i = 0; i < vhdr.numLODs; ++i)
 
                                     if(vert.m_BoneWeightsPacked.numbones > 1)
                                     {
-                                        FSeek(startof(mesh.externalWeightOffset) + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioexternalboneweight_t)));
-                                        mstudioexternalboneweight_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
+                                        FSeek(startof(mesh.externalWeightOffset) + mesh.externalWeightOffset + (vert.m_BoneWeightsPacked.weight[1] * sizeof(mstudioboneweightextra_t)));
+                                        mstudioboneweightextra_t weight[vert.m_BoneWeightsPacked.numbones - 1] <bgcolor=cBlue>;
                                     }
                                 } vertex;
                             }
